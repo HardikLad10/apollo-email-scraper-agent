@@ -463,7 +463,7 @@ python -m job_scanner.main --max-jobs 2
 **Out of scope**: No email_finder in CI. No README yet. No Runs/Errors tab, no log files, no artifacts. No change to the final summary line.
 
 **Logging build details** (spec in docs/DESIGN.md "Logging"):
-- **Prefixes**: each key line's message starts with `RUN`, `ATS`, `QUERY`, `FUNNEL`, `DROP`, `JD`, `FAIL`, `SCORES`, `COST` or `ASHBY` (added after Task 8: a search-found Ashby job whose board was unavailable or whose job id was not on the board; it falls back to a plain page fetch). The existing `Writing to sheet: <title>` line and the final summary line stay as they are.
+- **Prefixes**: each key line's message starts with `RUN`, `ATS`, `QUERY`, `FUNNEL`, `DROP`, `JD`, `FAIL`, `SCORES`, `COST`, `ASHBY`, `GREENHOUSE`, `LEVER`, or `WORKDAY` (`ASHBY` added after Task 8: a search-found Ashby job whose board was unavailable or whose job id was not on the board; it falls back to a plain page fetch. `WORKDAY` is Task 11: a search-found Workday job whose Workday API call failed; it falls back to a plain page fetch). The existing `Writing to sheet: <title>` line and the final summary line stay as they are.
 - **Header (`RUN`)**: run start (configured tz), effective cap (after `--max-jobs`), `ats_lookback_days`, `scoring.model`, existing URL count from the sheet.
 - **ATS**: totals (companies polled, jobs within lookback); list of companies with 0 jobs; list of companies with errors (slug + HTTP status, or error type for request/JSON failures). Today `ats_client` logs the warning and returns `[]` for both "no jobs" and "error", so service can't tell them apart: change ats_client to report the error to the caller, keeping "one company never crashes the run".
 - **QUERY**: per query: pages fetched, results, new (after dedup), passed filters, new+passed from page 2+ (tag each search job with its page number). Search errors as `FAIL search` lines (query name + HTTP status). One closing line with total Serper calls this run (every request sent).
@@ -534,6 +534,76 @@ Built after Task 8; DESIGN.md has the details.
 - Ashby API JD for search jobs: `jobs.ashbyhq.com/<slug>/<job id>` search results get their JD from `ats_client.get_ashby_board` (board cached per slug per run), falling back to a plain fetch with an `ASHBY` log line.
 - Site guard: queries with `site:<domain/path>` drop results whose host does not end with that domain (`DROP offsite`; `off-site` on the query line and in `FUNNEL`; still counted in `found`). A `google.com` `/goto` result, or a `/url` link whose `url` or `q` value does not start with `http`, is an unresolved redirect (`DROP redirect`, counted as `redirect`, not scored). Above 30% of search results, one `SEARCH` warning. A `/url` target that starts with `http` is unwrapped.
 - Post-fetch location: search hits on Ashby, Greenhouse (`get_greenhouse_job`), and Lever (`get_lever_job`) take JD + location from the posting API (counted "full fetched"; API failure falls back to the page fetch). A structured location is checked with `location_drop_reason` in ATS mode; drops are `DROP location <kw> (ats-location)` and `location dropped post-fetch` in the eligible equation.
+
+---
+
+## Task 11: Workday (search -> Workday JD API)
+
+**Goal**: Find Workday jobs with the same Serper board query as the other sites, then fill JD and structured fields from Workday's detail API. Live check Oct 8, 2026 (local script, 6 real Workday URLs from Serper): `site:myworkdayjobs.com` with `tbs=qdr:d` returned 10/10 Workday job links on page 1. `GET https://<tenant>.wd<N>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/job/<rest>` returned 200 JSON for 5 of 6 (one 403). Keys used: `jobPostingInfo.title`, `.jobDescription` (HTML), `.location`, `.additionalLocations`, `.country.descriptor` (e.g. "United States of America"), `.startDate` (`YYYY-MM-DD`). Serper's relative date is the crawl date, not the post date (one job showed "18 hours ago"; `startDate` was 22 days earlier).
+
+**Out of scope**: No Workday company polling (`POST /wday/cxs/<tenant>/<site>/jobs`). No age filter on `startDate`. No new `FUNNEL` stage.
+
+### 11a: ats_client Workday functions + url_utils
+
+**Files touched**:
+- `job_scanner/ats_client.py` (edit)
+- `job_scanner/url_utils.py` (edit)
+- `tests/test_ats_client.py` (edit)
+- `tests/test_url_utils.py` (edit)
+- `tests/fixtures/workday_detail.json` (new, scrubbed)
+
+**Out of scope**: No `service.py` change. No `queries.yaml` change.
+
+**What ats_client.py exposes** (Workday is another ATS; reuse `AtsError` and `_html_to_text`):
+- `workday_api_url(url) -> str | None`. Pure. Host must end in `.myworkdayjobs.com`. Tenant = first host label. Drop a leading locale segment (`xx-XX`). Drop a trailing `/apply`. `/<site>/jobs/details/<x>` is treated as `/<site>/job/<x>`. Anything that isn't a job page → `None`. Returns `https://<host>/wday/cxs/<tenant>/<site>/job/<rest>`.
+- `get_workday_job(url, timeout) -> dict` with `title`, `jd_text`, `location`, `additional_locations: list[str]`, `country: str | None`, `start_date: str | None`. Browser User-Agent, `Accept: application/json`. Non-Workday URL, request error, non-2xx, non-JSON, or missing `jobPostingInfo` → `AtsError` (status or error type only, never the body). `jd_text` = `jobDescription` HTML run through `_html_to_text`.
+
+**url_utils.py**:
+- On `*.myworkdayjobs.com` hosts, `normalize_url` drops a leading `xx-XX` locale path segment (so `/en-US/` and no-locale URLs dedup).
+- Add `locations` to the stripped query params (all hosts). `location` stays stripped.
+- Remove the `nvidia.wd5.myworkdayjobs.com` → `company_site` mapping so every Workday host is `workday`. Existing sheet rows still dedup because `get_existing_urls` normalizes on read.
+
+**Fixture**: one real detail response saved by a live call to `_scratch/workday_detail_sample.json`, then scrubbed into `tests/fixtures/workday_detail.json` (JD trimmed, no names or emails).
+
+**Verification**:
+```bash
+pytest -v
+# Expected: all pass, including Workday URL parsing and the scrubbed fixture.
+
+# One live get_workday_job call on a real Workday URL. Print only:
+# title, country, start_date, location, number of additional locations, JD length.
+```
+
+### 11b: service wiring + query + README
+
+**Files touched**:
+- `job_scanner/service.py` (edit)
+- `job_scanner/queries.yaml` (edit — one new enabled query `Workday`, `site:myworkdayjobs.com`, same title OR-list and `-intitle:` exclusions as the other board queries)
+- `tests/test_service.py` (edit)
+- `README.md` (edit — Logs prefixes, export grep, Serper credits, Workday in "What this does")
+- `_scratch/workday_run.py` (new, local-only)
+
+**Out of scope**: No ATS companies. The NVIDIA `company_sites` query stays; same-URL hits dedup. Serper: 21 enabled queries × 4 pages × 2 runs = up to 168 credits/day (Sequoia Capital, Insight Partners, and Microsoft stay disabled). Update every place that says 160.
+
+**service.py**:
+- In `_search_ats_posting`, a search job whose URL gives a `workday_api_url` gets JD + structured data from `get_workday_job`, counted "full fetched". Failure or empty text → `WORKDAY job <url> unavailable (<detail>); falling back` and the plain fetch, like `ASHBY` / `GREENHOUSE` / `LEVER`.
+- Row, when the Workday call worked: title = Workday title (search titles are noisy); company from the scorer (unchanged for search jobs); location = Workday `location` plus `additional_locations` joined with `"; "`; `posted_date` = `startDate`. Serper's date stays for sorting and the cap, which happen before the JD step.
+- Country check, in the existing post-fetch location stage: drop when `country` is set, is not `United States of America`, and `additional_locations` is empty. Log `DROP location <country> (workday-country) | <title> | <url>`; counts as `location dropped post-fetch`. No new `FUNNEL` stage; equations unchanged. Do not run `us_signals` on `additional_locations` (Workday writes `US, CA, Santa Clara`, which no signal matches). When Workday returned no country, the existing ats-location check runs on the location string, as for the other ATSs.
+- No age filter on `startDate`: an older but still-open job is scored once; the sheet shows its real date.
+- Add `WORKDAY` to every log-prefix list and to the export grep (a search-found Workday job whose Workday API call failed; it falls back to a plain page fetch).
+
+**Verification**:
+```bash
+pytest -v
+# Expected: all pass.
+
+# Local-only. Config limited to the Workday query (no ATS companies, no other queries).
+# Writes to the TEST sheet.
+python _scratch/workday_run.py
+# Expected: run_pipeline(3) completes; WORKDAY fallback or a full-fetched Workday row as the URLs allow.
+
+# Then one manual Actions run.
+```
 
 ---
 
@@ -746,7 +816,7 @@ SHEET_ID=<prod id> python _scratch/import_legacy_contacts.py --apply
 7. **Config files** — what profile.yaml, candidate.md, settings.yaml, queries.yaml, companies.yaml do
 8. **Logs** — where to find run logs (Actions tab → run → job log, plus the run's step summary), retention (90 days by default), the fixed prefixes (`QUERY`, `DROP`, `FUNNEL`, `SCORES`, `COST`, …) and what each means, and this export command for a multi-run review:
    ```bash
-   gh run list --workflow scan.yaml --limit 60 --json databaseId -q '.[].databaseId' | xargs -I{} gh run view {} --log | grep -E "RUN|ATS|QUERY|FUNNEL|DROP|JD|FAIL|SCORES|COST|ASHBY" > review.txt
+   gh run list --workflow scan.yaml --limit 60 --json databaseId -q '.[].databaseId' | xargs -I{} gh run view {} --log | grep -E "RUN|ATS|QUERY|FUNNEL|DROP|JD|FAIL|SCORES|COST|ASHBY|SEARCH|GREENHOUSE|LEVER|WORKDAY" > review.txt
    ```
 9. **Architecture** — brief pointer to docs/DESIGN.md
 
@@ -777,6 +847,7 @@ Task 1 (setup)
 │                            │      │      │      └── Task 7 (pipeline: sheets_repo + service + main)
 │                            │      │      │             │
 │                            │      │      │             ├── Task 8 (GitHub Actions)
+│                            │      │      │             │      └── Task 11 (Workday search -> JD API)
 │                            │      │      │             │
 Task 9 (email_finder) ◄─────┘      │      │             │
    depends on: Task 1 (shared/sheets.py)                 │
@@ -785,4 +856,4 @@ Task 9 (email_finder) ◄─────┘      │      │             │
 Task 10 (README) ◄── all above ──────────────────────────┘
 ```
 
-Tasks 2 and 3 are independent of each other but both depend on Task 1. Task 9 depends on Task 1 (shared/sheets.py) and is sequenced after Task 7 per preference, not strict dependency. Task 9b depends on Task 9 (Contacts repo + LinkedIn normalizer). Task 4 has no external dependencies but is sequenced after 2+3 because the tests benefit from understanding the real data shapes from those fixtures.
+Tasks 2 and 3 are independent of each other but both depend on Task 1. Task 9 depends on Task 1 (shared/sheets.py) and is sequenced after Task 7 per preference, not strict dependency. Task 9b depends on Task 9 (Contacts repo + LinkedIn normalizer). Task 4 has no external dependencies but is sequenced after 2+3 because the tests benefit from understanding the real data shapes from those fixtures. Task 11 depends on Task 8 (search-job JD path and prefixed logs) and is sequenced after it.
