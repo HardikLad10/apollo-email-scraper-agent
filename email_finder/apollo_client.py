@@ -1,4 +1,4 @@
-"""Apollo people/bulk_match client (disabled provider; the free plan returns 403).
+"""Apollo people/bulk_match client (provider 1 on a paid plan).
 
 One request per call, no retries. Errors carry only the HTTP status and Apollo's error
 code: response bodies can hold personal data and are never put in messages.
@@ -26,7 +26,10 @@ def _malformed(status: int) -> RuntimeError:
 
 def bulk_match(linkedin_urls: list[str], timeout: float) -> dict[str, dict]:
     """Returned records keyed by normalized `linkedin_url`. A submitted URL with no record
-    (or a record without an email) is absent, which means no-match."""
+    is absent, which means no-match. So are null entries, a blank email or URL,
+    `revealed_for_current_team` false, and an email whose local part starts with
+    `email_not_unlocked`. A missing `revealed_for_current_team` is still a match.
+    Phone and personal-email fields are never read."""
     api_key = os.environ.get("APOLLO_API_KEY")
     if not api_key:
         raise RuntimeError("APOLLO_API_KEY is not set")
@@ -71,6 +74,9 @@ def bulk_match(linkedin_urls: list[str], timeout: float) -> dict[str, dict]:
         ):
             raise _malformed(response.status_code)
         if not url or not url.strip() or not email or not email.strip():
+            continue
+        local = email.strip().split("@", 1)[0]
+        if record.get("revealed_for_current_team") is False or local.startswith("email_not_unlocked"):
             continue
         organization = record.get("organization") if isinstance(record.get("organization"), dict) else {}
         name = record.get("name") or " ".join(

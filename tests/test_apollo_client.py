@@ -13,6 +13,7 @@ KEY = "apollo-secret-key"
 JANE = "https://linkedin.com/in/jane-doe-example"
 ALEX = "https://linkedin.com/in/alex-poe-example"
 NOBODY = "https://linkedin.com/in/no-record-example"
+SAM = "https://linkedin.com/in/sam-roe-example"
 URLS = [JANE, NOBODY, ALEX]
 
 
@@ -59,7 +60,7 @@ def test_records_keyed_by_normalized_linkedin_url():
             "company": "Sample Labs",
             "title": "Engineering Manager",
             "email": "alex.poe@example.org",
-            "email_status": "extrapolated",
+            "email_status": "verified",
         },
     }
 
@@ -83,10 +84,30 @@ def test_name_falls_back_to_first_and_last():
     assert result[JANE]["name"] == "Jane Doe"
 
 
+def test_revealed_for_current_team_false_is_no_match():
+    result, _ = _match(_load("apollo_bulk_match.json"))
+    assert SAM not in result
+
+
+def test_missing_revealed_for_current_team_still_matches():
+    body = _load("apollo_bulk_match.json")
+    del body["matches"][0]["revealed_for_current_team"]
+    result, _ = _match(body)
+    assert JANE in result
+
+
+def test_email_not_unlocked_local_part_is_no_match():
+    body = _load("apollo_bulk_match.json")
+    body["matches"][0]["email"] = "email_not_unlocked@example.com"
+    result, _ = _match(body)
+    assert JANE not in result
+    assert ALEX in result
+
+
 def test_record_without_email_or_url_is_not_a_match():
     body = _load("apollo_bulk_match.json")
     body["matches"][0]["email"] = None
-    body["matches"][2]["linkedin_url"] = None
+    body["matches"][1]["linkedin_url"] = None
     result, _ = _match(body)
     assert result == {}
 

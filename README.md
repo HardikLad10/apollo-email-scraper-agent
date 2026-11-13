@@ -2,7 +2,7 @@
 
 ## What this does
 
-Two small Python tools that feed one Google Sheet. **`job_scanner`** (live) runs twice a day on GitHub Actions: it polls tracked company boards on Greenhouse, Lever and Ashby, runs `site:` searches through the Serper API, dedups against the sheet, drops jobs by title, location and required years of experience, scores the rest with Claude Sonnet (`claude-sonnet-5-5`) against your profile, and appends the scored rows to the sheet's `Jobs` tab. Unresolved Google redirects (`google.com/goto`, or a `/url` link whose target does not start with `http`) are counted as redirects and skipped. After a Greenhouse, Lever, or Ashby single-job fetch, the structured location is checked and a non-US job is dropped before scoring. **`email_finder`** (built, local CLI) takes LinkedIn profile URLs (arguments, `--file`, or `email_finder/linkedin-profiles.txt`), looks up each email through Prospeo and then Apify for Prospeo's misses (Apollo is supported but disabled; its API needs a paid plan), and appends one row per URL to the `Contacts` tab. With `--draft` it also writes a short LinkedIn connection note into each found row's `outreach_line`; outreach emails are written by hand.
+Two small Python tools that feed one Google Sheet. **`job_scanner`** (live) runs twice a day on GitHub Actions: it polls tracked company boards on Greenhouse, Lever and Ashby, runs `site:` searches through the Serper API, dedups against the sheet, drops jobs by title, location and required years of experience, scores the rest with Claude Sonnet (`claude-sonnet-5-5`) against your profile, and appends the scored rows to the sheet's `Jobs` tab. Unresolved Google redirects (`google.com/goto`, or a `/url` link whose target does not start with `http`) are counted as redirects and skipped. After a Greenhouse, Lever, or Ashby single-job fetch, the structured location is checked and a non-US job is dropped before scoring. **`email_finder`** (built, local CLI) takes LinkedIn profile URLs (arguments, `--file`, or `email_finder/linkedin-profiles.txt`), looks up each email through Apollo, then Prospeo, then Apify, and appends one row per URL to the `Contacts` tab. With `--draft` it also writes a short LinkedIn connection note into each found row's `outreach_line`; outreach emails are written by hand.
 
 All commands below are run from the repo root with the virtual environment active.
 
@@ -72,9 +72,9 @@ Fill in `SERPER_API_KEY`, `ANTHROPIC_API_KEY` and `SHEET_ID`. **`SHEET_ID` in `.
 | `GOOGLE_APPLICATION_CREDENTIALS` | `.env` (already `service_account.json` in the example) | Every run |
 | `SERPER_API_KEY` | `.env` and the GitHub secret of the same name | `job_scanner` |
 | `ANTHROPIC_API_KEY` | `.env` and the GitHub secret of the same name | `job_scanner`; `email_finder` only with `--draft` |
+| `APOLLO_API_KEY` | `.env` only | `email_finder` when `apollo` is in `providers` (it is, by default; paid plan, one credit per match) |
 | `PROSPEO_API_KEY` | `.env` only | `email_finder` when `prospeo` is in `providers` (it is, by default) |
 | `APIFY_TOKEN` | `.env` only | `email_finder` when `apify` is in `providers` (it is, by default) |
-| `APOLLO_API_KEY` | `.env` only | `email_finder` only when `apollo` is in `providers` (it is not; paid plan) |
 
 ### 3. Personal config files
 
@@ -178,7 +178,7 @@ Both copies are gitignored. The `Contacts` tab needs all 11 headers in row 1 (se
 Required keys in `.env`, checked before any work (all missing ones are named in one error, exit 1):
 
 - Always: `SHEET_ID`, `GOOGLE_APPLICATION_CREDENTIALS`.
-- `PROSPEO_API_KEY` when `prospeo` is in `providers`, `APIFY_TOKEN` when `apify` is, `APOLLO_API_KEY` only when `apollo` is (it is not by default).
+- `APOLLO_API_KEY` when `apollo` is in `providers`, `PROSPEO_API_KEY` when `prospeo` is, `APIFY_TOKEN` when `apify` is (all three are, by default).
 - `ANTHROPIC_API_KEY` only with `--draft`. `--draft` also reads `config/candidate.md` (and `config/outreach_examples.md` if present) before any lookup; a missing or unreadable `candidate.md` is an error, exit 1.
 
 ### Input file format
@@ -247,9 +247,7 @@ Without the prefix every run writes to the TEST sheet from `.env`. Check the fir
 
 ### Providers
 
-`providers` in `email_finder/settings.yaml` sets the order, `[prospeo, apify]` by default. Each provider runs once over the URLs still unmatched and passes its no-matches to the next. Prospeo makes one call per URL; Apify runs its actor once for all remaining URLs and returns no title or status (rows get `email_status` `unverified`).
-
-Apollo is supported but disabled: its free plan returns 403 `API_INACCESSIBLE`. To enable it on a paid plan, first verify the `bulk_match` mapping against a real response (see Open Risks in [`docs/DESIGN.md`](docs/DESIGN.md)), then set `APOLLO_API_KEY` in `.env` and add `apollo` to `providers` (for example `[prospeo, apify, apollo]`).
+`providers` in `email_finder/settings.yaml` sets the order, `[apollo, prospeo, apify]` by default. Each provider runs once over the URLs still unmatched and passes its no-matches to the next. Apollo calls `people/bulk_match` (paid plan, one credit per match). Prospeo makes one call per URL. Apify runs its actor once for all remaining URLs and returns no title or status (rows get `email_status` `unverified`).
 
 ### Rate limits and the per-run cap
 
@@ -505,7 +503,7 @@ A one-page evidence document the scorer reads alongside the profile. Copied from
 
 - `timezone`: `America/Chicago`; `date_found` is written in this zone.
 - `max_urls_per_run`: 20 lookups per run, counted after removing existing and duplicate URLs.
-- `providers`: `[prospeo, apify]`, run in this order (`apollo` available, paid plan only).
+- `providers`: `[apollo, prospeo, apify]`, run in this order.
 - `prospeo.timeout_seconds`: 15 per call.
 - `prospeo.min_interval_seconds`: 3.1 between calls (limits 1/s, 20/min, 50/day).
 - `apify.actor_id`: `vulnv/linkedin-email-finder`.
@@ -555,7 +553,7 @@ ATS polling (Greenhouse, Lever, Ashby) uses free public APIs.
 
 - **Prospeo**: free plan, 100 credits/month; limits 1/s, 20/min, 50/day.
 - **Apify** (`vulnv/linkedin-email-finder`): about $0.026 per email found, paid from the $5/month free credit.
-- **Apollo**: paid plans only, and disabled in `providers`, so it costs nothing today.
+- **Apollo**: paid plan, one plan credit per match.
 - **Drafts** (`--draft`): one `claude-sonnet-5-5` call per found person. Thinking tokens count as output tokens, but a note costs a few cents at most.
 
 ## Before every commit

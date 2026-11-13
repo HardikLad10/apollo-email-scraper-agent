@@ -6,8 +6,8 @@ timezone: America/Chicago
 max_urls_per_run: 20
 
 # Run in this order; each provider gets the previous one's no-matches.
-# apollo is available but needs a paid plan (free plan returns 403 API_INACCESSIBLE).
-providers: [prospeo, apify]
+# apollo is first on the paid plan (one credit per match).
+providers: [apollo, prospeo, apify]
 
 prospeo:
   timeout_seconds: 15

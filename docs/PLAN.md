@@ -537,16 +537,16 @@ Built after Task 8; DESIGN.md has the details.
 
 ---
 
-## Task 9: email_finder (Prospeo → Apify chain + Outreach + CLI)
+## Task 9: email_finder (Apollo → Prospeo → Apify chain + Outreach + CLI)
 
-**Status**: Built. Providers in use are Prospeo then Apify (`providers: [prospeo, apify]`). Apollo is implemented and left out of `providers` (free plan returns 403 `API_INACCESSIBLE`). CLI: `python -m email_finder.main [urls ...] [--file PATH] [--draft]`. Contacts columns: `contacted`, `name`, `company`, `title`, `email`, `email_status`, `email_source`, `linkedin_url`, `notes`, `outreach_line`, `date_found` (header-driven; all 11 required).
+**Status**: Built. Providers in use are Apollo, then Prospeo, then Apify (`providers: [apollo, prospeo, apify]`). The free plan used to return 403 `API_INACCESSIBLE`; Apollo is provider 1 on the paid plan. CLI: `python -m email_finder.main [urls ...] [--file PATH] [--draft]`. Contacts columns: `contacted`, `name`, `company`, `title`, `email`, `email_status`, `email_source`, `linkedin_url`, `notes`, `outreach_line`, `date_found` (header-driven; all 11 required).
 
-**Goal**: Build the email_finder module: a batch CLI that takes LinkedIn profile URLs, looks each one up through an ordered chain of email providers (Prospeo, then Apify; Apollo available but disabled), optionally drafts a LinkedIn connection note with Claude (stored in `outreach_line`), and appends one row per URL to the Contacts tab.
+**Goal**: Build the email_finder module: a batch CLI that takes LinkedIn profile URLs, looks each one up through an ordered chain of email providers (Apollo, then Prospeo, then Apify), optionally drafts a LinkedIn connection note with Claude (stored in `outreach_line`), and appends one row per URL to the Contacts tab.
 
 **Provider facts** (from real tests, Oct 5 2026; details in docs/DESIGN.md "Data Flow — email_finder"):
 - **Prospeo** (free, 100 credits/month; enrich limits 1/s, 20/min, 50/day): `POST https://api.prospeo.io/enrich-person`, header `X-KEY`, body `{"data": {"linkedin_url": ...}}`. Match (`error: false`): email at `person.email.email`, status at `person.email.status`, name at `person.full_name`, title at `person.current_job_title`, company at `company.name`. No match: `{"error": true, "error_code": "NO_MATCH"}`, or a match whose email is not revealed (`person.email.revealed` false, or an email containing `*`, i.e. masked). The match response also carries a `person.mobile` object; it is never read or stored (and is scrubbed in fixtures).
 - **Apify** actor `vulnv/linkedin-email-finder` (pay per email found, ~$0.026, from the $5/month free credit): `POST https://api.apify.com/v2/acts/vulnv~linkedin-email-finder/run-sync-get-dataset-items`, header `Authorization: Bearer <APIFY_TOKEN>`, body `{"urls": [...]}`, HTTP 201. One item per URL with `name`, `company`, `domain`, `email`, `found`, `linkedin_url` (no status, no title). No match = `found: false` with `error` exactly `"No email found in response"`.
-- **Apollo**: `people/match` and `people/bulk_match` return 403 `API_INACCESSIBLE` on the free plan. Kept as a disabled provider for when a paid plan exists.
+- **Apollo** (paid plan, provider 1; one plan credit per match): `POST https://api.apollo.io/api/v1/people/bulk_match`, header `x-api-key`, `reveal_personal_emails: false`, `reveal_phone_number: false`. Verified Nov 13 2026 on 3 matches: `matches` keeps submission order and each record's `linkedin_url` normalizes to the submitted URL. A null slot or an omitted record is a no-match (that shape was not observed). Also a no-match: blank email or URL, `revealed_for_current_team` false (a missing key still matches), or an email local part starting with `email_not_unlocked`. Phone and personal-email fields are never read. The free plan returned 403 `API_INACCESSIBLE`.
 
 **Files touched**:
 - `shared/sheets.py` (edit — move in `header_positions` and `column_letter` from `job_scanner/sheets_repo.py`)
@@ -579,16 +579,16 @@ Built after Task 8; DESIGN.md has the details.
 **Sheet target**: email_finder runs only locally, so it writes to the TEST sheet from `.env` by default. Real use: `SHEET_ID=<prod id> python -m email_finder.main ...`. The `Writing to sheet: <title>` line shows which sheet was hit.
 
 **Provider chain** (`service.py`):
-- Providers run in the order of the `providers` list in `email_finder/settings.yaml` (default `[prospeo, apify]`; `apollo` available).
+- Providers run in the order of the `providers` list in `email_finder/settings.yaml` (default `[apollo, prospeo, apify]`).
 - Each provider runs **once over all URLs still unmatched**, then passes its no-matches to the next provider.
 - **Prospeo**: one call per URL, `prospeo.timeout_seconds` (15), `prospeo.min_interval_seconds` (3.1) sleep between calls — keeps under 20/min for any cap. The 50/day limit is covered by the stop rule (429 → stop, rest pending).
 - **Apify**: one actor run for all its URLs with its own `apify.timeout_seconds` (300). Results are mapped back by normalized `linkedin_url`.
-- **Apollo**: `people/bulk_match` in batches of `apollo.batch_size` (10), `apollo.timeout_seconds` (15), `apollo.min_interval_seconds` (1.2) between batches, `reveal_personal_emails: false`, never phone. Results are mapped back by the returned record's normalized `linkedin_url`; a submitted URL with no returned record is a no-match. Verify this against a real response before enabling Apollo.
+- **Apollo**: `people/bulk_match` in batches of `apollo.batch_size` (10), `apollo.timeout_seconds` (15), `apollo.min_interval_seconds` (1.2) between batches, `reveal_personal_emails: false`, never phone. Results are mapped by the returned record's normalized `linkedin_url` (verified Nov 13 2026). A submitted URL with no returned record, a null entry, `revealed_for_current_team` false, or an `email_not_unlocked` local part is a no-match.
 - `email_status` is stored as the provider returns it, lowercased; Apify rows get `"unverified"`.
 - A URL matched by no provider → row with blank `email` and `email_status` `"not found"` (so the same person is never looked up twice).
 
 **Errors**:
-- **No-match** is only: Prospeo `error_code: NO_MATCH` (at any HTTP status), or a Prospeo match whose `person.email` is null, whose `person.email.email` is empty/null, whose `person.email.revealed` is false (a missing `revealed` is not a no-match), or whose email contains `*` (masked); Apify `found: false` with `error` exactly `"No email found in response"`; Apollo no record returned for that URL (`null` entries and records with a blank email or URL count as no record). A no-match falls through to the next provider.
+- **No-match** is only: Prospeo `error_code: NO_MATCH` (at any HTTP status), or a Prospeo match whose `person.email` is null, whose `person.email.email` is empty/null, whose `person.email.revealed` is false (a missing `revealed` is not a no-match), or whose email contains `*` (masked); Apify `found: false` with `error` exactly `"No email found in response"`; Apollo no record for that URL (`null` or omitted), a blank email or URL, `revealed_for_current_team` false (a missing key is not a no-match), or an email local part starting with `email_not_unlocked`. A no-match falls through to the next provider.
 - Apify items with `found: true` but a blank email, a non-boolean `found`, or a missing/blank `linkedin_url` are errors (malformed body).
 - Error messages carry only the provider name and HTTP status / error code, never the response body (it can hold personal data) and never the key.
 - **Anything else** (non-2xx, other error codes, 401/403/429, timeout, malformed body, an Apify item missing for a submitted URL) → stop the whole run: append the rows already resolved (found + not found), do **not** write the unresolved URLs (they are retried next run), print which URLs are pending, exit 1.
@@ -626,7 +626,7 @@ Built after Task 8; DESIGN.md has the details.
 - Reads input, normalizes, dedups, enforces the cap, runs the provider chain, drafts outreach (`--draft`), builds row dicts, and does **one append at the end** (or at the stop, per Errors). `email_source` = provider name (`prospeo` / `apify` / `apollo`), blank for not-found rows. `date_found` = `YYYY-MM-DD HH:MM` in `timezone`, formatted inline with `zoneinfo` (no `job_scanner.date_utils`).
 
 `email_finder/settings.yaml`:
-- `timezone`, `max_urls_per_run` (20), `providers` (`[prospeo, apify]`), `prospeo.timeout_seconds` (15), `prospeo.min_interval_seconds` (3.1), `apify.actor_id` (`vulnv/linkedin-email-finder`), `apify.timeout_seconds` (300), `apollo.batch_size` (10), `apollo.timeout_seconds` (15), `apollo.min_interval_seconds` (1.2), `outreach.model` (`claude-sonnet-5-5`), `outreach.max_tokens` (4096: thinking tokens count against it, so a `max_chars` note never hits it), `outreach.max_chars` (200; 200 if the key is missing).
+- `timezone`, `max_urls_per_run` (20), `providers` (`[apollo, prospeo, apify]`), `prospeo.timeout_seconds` (15), `prospeo.min_interval_seconds` (3.1), `apify.actor_id` (`vulnv/linkedin-email-finder`), `apify.timeout_seconds` (300), `apollo.batch_size` (10), `apollo.timeout_seconds` (15), `apollo.min_interval_seconds` (1.2), `outreach.model` (`claude-sonnet-5-5`), `outreach.max_tokens` (4096: thinking tokens count against it, so a `max_chars` note never hits it), `outreach.max_chars` (200; 200 if the key is missing).
 
 `main.py`:
 - `load_dotenv()`, then check env before any work: `SHEET_ID`, `GOOGLE_APPLICATION_CREDENTIALS`, plus the key of each **enabled** provider only (`PROSPEO_API_KEY`, `APIFY_TOKEN`, `APOLLO_API_KEY`); `ANTHROPIC_API_KEY` only with `--draft`. One error naming every missing variable, exit 1.
@@ -639,15 +639,15 @@ Built after Task 8; DESIGN.md has the details.
 **Fixtures** (scrub every name, email, phone, URL, domain and company to fake values; keep structure):
 - `prospeo_enrich_match.json`, `prospeo_enrich_nomatch.json`, `apify_match.json`, `apify_nomatch.json` — from `_scratch/*`.
 - `apollo_403.json` — from `_scratch/apollo_test.json`.
-- `apollo_bulk_match.json` — **synthetic**, built from Apollo's documented `bulk_match` shape and labelled synthetic in the file.
+- `apollo_bulk_match.json` — trimmed and scrubbed from a real `bulk_match` response (Nov 2026). The shape of a miss was not observed.
 - `outreach_response.json` — scrubbed Claude response.
 
 **Tests** (fixtures only, no real API calls):
 - Each client: match, no-match, and error cases (non-2xx, other error codes, 401/403/429, timeout, malformed body); keys appear only in headers; `email_status` lowercased.
 - Prospeo: a match with empty/null `person.email.email`, `person.email.revealed` false, or an email containing `*` is a no-match; `person.mobile` is never read.
 - Apify: exact `"No email found in response"` string is no-match; any other `found: false` error is an error; a missing item for a submitted URL stops the run.
-- Apollo: records mapped by normalized `linkedin_url`; a submitted URL with no record is a no-match.
-- Service: chain order (Prospeo no-matches go to Apify; matched URLs never reach the next provider); partial failure appends resolved rows, writes no pending URLs, reports them, exits 1; rate-limit spacing (patched `sleep`, `min_interval_seconds` between Prospeo calls and Apollo batches); cap counted after existing + duplicate removal, exceeded → exit before any lookup; `--draft` failure → blank `outreach_line` + warning, run continues; Anthropic auth/permission error → drafting stops, all rows appended, exit 1; each row's notes and the examples file reach the drafter; a missing examples file is not an error.
+- Apollo: records mapped by normalized `linkedin_url`; a submitted URL with no record is a no-match; `revealed_for_current_team` false and an `email_not_unlocked` local part are no-matches; a missing `revealed_for_current_team` still matches.
+- Service: chain order (Apollo no-matches go to Prospeo, then Apify; Apollo matches never reach Prospeo); partial failure appends resolved rows, writes no pending URLs, reports them, exits 1; rate-limit spacing (patched `sleep`, `min_interval_seconds` between Prospeo calls and Apollo batches); cap counted after existing + duplicate removal, exceeded → exit before any lookup; `--draft` failure → blank `outreach_line` + warning, run continues; Anthropic auth/permission error → drafting stops, all rows appended, exit 1; each row's notes and the examples file reach the drafter; a missing examples file is not an error.
 - Outreach client: trim at the last sentence end within `max_chars`; too long with no sentence end → error (blank + warning in service); `max_tokens` stop → error; notes, examples and the prompt rules reach the call; nothing logged.
 - Input file parsing: `#` lines and blanks ignored, trailing `# note` → `notes`, non-`/in/` lines reported as `ignored`, in-input dupes reported as `duplicate`, sheet dupes as `exists`; summary counts match.
 - Contacts repo: missing header is fatal and writes nothing; rows land in the right columns by header name; `get_existing_keys` returns normalized URLs and lowercase emails, blanks skipped.

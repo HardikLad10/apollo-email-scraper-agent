@@ -18,7 +18,7 @@ E = "https://linkedin.com/in/e"
 SETTINGS = {
     "timezone": "America/Chicago",
     "max_urls_per_run": 20,
-    "providers": ["prospeo", "apify"],
+    "providers": ["apollo", "prospeo", "apify"],
     "prospeo": {"timeout_seconds": 15, "min_interval_seconds": 3.1},
     "apify": {"actor_id": "vulnv/linkedin-email-finder", "timeout_seconds": 300},
     "apollo": {"batch_size": 10, "timeout_seconds": 15, "min_interval_seconds": 1.2},
@@ -158,8 +158,24 @@ def test_chain_order_prospeo_no_matches_go_to_apify(monkeypatch, tmp_path):
     assert rows[B]["email_status"] == "unverified"
     assert result["summary"] == {
         "input": 3, "ignored": 0, "duplicate": 0, "existing": 0,
-        "found": {"prospeo": 1, "apify": 1}, "not_found": 1, "pending": 0,
+        "found": {"apollo": 0, "prospeo": 1, "apify": 1}, "not_found": 1, "pending": 0,
     }
+
+
+def test_apollo_no_matches_reach_prospeo_and_matches_do_not(monkeypatch, tmp_path):
+    h = Harness(
+        monkeypatch, tmp_path,
+        apollo={A: _match("a")},
+        prospeo={C: _match("c")},
+        apify=lambda urls: {B: {**_match("b", "unverified"), "title": ""}},
+    )
+
+    result = h.run([A, B, C])
+
+    assert [e[1] for e in h.calls("apollo")] == [[A, B, C]]
+    assert [e[1] for e in h.calls("prospeo")] == [B, C]
+    assert [e[1] for e in h.calls("apify")] == [[B]]
+    assert result["summary"]["found"] == {"apollo": 1, "prospeo": 1, "apify": 1}
 
 
 def test_matched_urls_never_reach_the_next_provider(monkeypatch, tmp_path):
@@ -359,7 +375,7 @@ def test_ignored_duplicate_and_existing_lines(monkeypatch, tmp_path):
     ]
     assert result["summary"] == {
         "input": 6, "ignored": 2, "duplicate": 1, "existing": 1,
-        "found": {"prospeo": 1, "apify": 0}, "not_found": 1, "pending": 0,
+        "found": {"apollo": 0, "prospeo": 1, "apify": 0}, "not_found": 1, "pending": 0,
     }
     rows = h.rows_by_url()
     assert rows[A]["notes"] == "recruiter note"
