@@ -1,13 +1,15 @@
 """URL normalization used as the dedup key, and the job platform for a URL."""
 
+import re
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 # gh_jid and id are deliberately absent: they are job IDs on some career sites.
-_TRACKING_PARAMS = {"ref", "source", "gh_src", "team", "page", "location", "action"}
+_TRACKING_PARAMS = {"ref", "source", "gh_src", "team", "page", "location", "locations", "action"}
 _APPLY_SEGMENT = "/apply"
+_LOCALE = re.compile(r"^[a-z]{2}-[a-z]{2}$", re.I)
+_WORKDAY_HOST = "myworkdayjobs.com"
 
-# Host (or parent domain) -> platform. The longest matching suffix wins, so a specific
-# company host like nvidia.wd5.myworkdayjobs.com beats the generic myworkdayjobs.com.
+# Host (or parent domain) -> platform. The longest matching suffix wins.
 _PLATFORM_HOSTS = {
     "jobs.ashbyhq.com": "ashby",
     "greenhouse.io": "greenhouse",
@@ -27,7 +29,6 @@ _PLATFORM_HOSTS = {
     "jobs.apple.com": "company_site",
     "careers.microsoft.com": "company_site",
     "nvidia.com": "company_site",
-    "nvidia.wd5.myworkdayjobs.com": "company_site",
     "tesla.com": "company_site",
     "metacareers.com": "company_site",
     "jobs.netflix.net": "company_site",
@@ -57,17 +58,22 @@ def normalize_url(url: str) -> str:
         (
             parts.scheme.lower(),
             parts.netloc.lower(),
-            _strip_path(parts.path),
+            _strip_path(parts.path, (parts.hostname or "").lower()),
             "&".join(kept),
             "",
         )
     )
 
 
-def _strip_path(path: str) -> str:
+def _strip_path(path: str, host: str = "") -> str:
     path = path.rstrip("/")
     while path.lower().endswith(_APPLY_SEGMENT):
         path = path[: -len(_APPLY_SEGMENT)].rstrip("/")
+    if host == _WORKDAY_HOST or host.endswith("." + _WORKDAY_HOST):
+        parts = path.split("/")
+        if len(parts) > 1 and _LOCALE.fullmatch(parts[1] or ""):
+            path = "/" + "/".join(parts[2:])
+            path = path.rstrip("/")
     return path
 
 

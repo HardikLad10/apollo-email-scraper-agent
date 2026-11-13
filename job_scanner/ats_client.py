@@ -1,11 +1,13 @@
-"""Greenhouse, Lever and Ashby public job board API clients. One GET per board.
+"""Greenhouse, Lever, Ashby, and Workday public job APIs. One GET per board or job.
 
 A failed request, non-2xx status or non-JSON body raises AtsError; the caller decides
 whether to skip the company.
 """
 
 import html
+import re
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,6 +17,12 @@ from job_scanner import date_utils
 _GREENHOUSE_URL = "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true"
 _LEVER_URL = "https://api.lever.co/v0/postings/{slug}"
 _ASHBY_URL = "https://api.ashbyhq.com/posting-api/job-board/{slug}"
+_WORKDAY_HOST = ".myworkdayjobs.com"
+_LOCALE = re.compile(r"^[a-z]{2}-[a-z]{2}$", re.I)
+_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
 
 def list_greenhouse_jobs(
@@ -113,6 +121,69 @@ def get_lever_job(slug: str, posting_id, timeout: float = 15) -> dict:
         jd_text=_lever_jd_text(item),
         location=(item.get("categories") or {}).get("location"),
     )
+
+
+def workday_api_url(url: str) -> str | None:
+    """cxs detail URL for a Workday job page, or None."""
+    parts = urlsplit((url or "").strip())
+    host = (parts.hostname or "").lower()
+    if not host.endswith(_WORKDAY_HOST):
+        return None
+    tenant = host.split(".", 1)[0]
+    if not tenant or host == _WORKDAY_HOST.lstrip("."):
+        return None
+    segments = [seg for seg in parts.path.split("/") if seg]
+    while segments and segments[-1].lower() == "apply":
+        segments.pop()
+    if segments and _LOCALE.fullmatch(segments[0]):
+        segments = segments[1:]
+    site, rest = _workday_job_path(segments)
+    if site is None:
+        return None
+    return f"https://{host}/wday/cxs/{tenant}/{site}/job/{rest}"
+
+
+def get_workday_job(url: str, timeout: float) -> dict:
+    """One Workday posting. Errors raise AtsError (status or error type only)."""
+    api = workday_api_url(url)
+    if api is None:
+        raise AtsError("workday", "", "not a Workday job URL")
+    try:
+        response = requests.get(
+            api,
+            headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:
+        raise AtsError("workday", "", type(exc).__name__) from exc
+    if not response.ok:
+        raise AtsError("workday", "", f"HTTP {response.status_code}")
+    try:
+        body = response.json()
+    except ValueError:
+        raise AtsError("workday", "", "invalid JSON") from None
+    info = body.get("jobPostingInfo") if isinstance(body, dict) else None
+    if not isinstance(info, dict):
+        raise AtsError("workday", "", "missing jobPostingInfo")
+    country = info.get("country")
+    descriptor = country.get("descriptor") if isinstance(country, dict) else None
+    extras = info.get("additionalLocations")
+    return dict(
+        title=info.get("title") or "",
+        jd_text=_html_to_text(info.get("jobDescription") or ""),
+        location=info.get("location") or "",
+        additional_locations=[str(item) for item in extras] if isinstance(extras, list) else [],
+        country=descriptor or None,
+        start_date=info.get("startDate") or None,
+    )
+
+
+def _workday_job_path(segments: list[str]) -> tuple[str | None, str | None]:
+    if len(segments) >= 3 and segments[1].lower() == "job":
+        return segments[0], "/".join(segments[2:])
+    if len(segments) >= 4 and [s.lower() for s in segments[1:3]] == ["jobs", "details"]:
+        return segments[0], "/".join(segments[3:])
+    return None, None
 
 
 def _ashby_jd_text(item: dict) -> str:

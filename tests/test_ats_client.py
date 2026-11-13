@@ -13,9 +13,11 @@ from job_scanner.ats_client import (
     get_ashby_board,
     get_greenhouse_job,
     get_lever_job,
+    get_workday_job,
     list_ashby_jobs,
     list_greenhouse_jobs,
     list_lever_jobs,
+    workday_api_url,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -320,6 +322,98 @@ def test_single_job_errors_raise_ats_error(fn, job_id):
         with pytest.raises(AtsError) as info:
             fn("acme", job_id)
     assert info.value.detail == "Timeout"
+
+
+_WD = "https://acme.wd5.myworkdayjobs.com"
+_WD_JOB = f"{_WD}/External/job/USA/SWE_R1"
+_WD_API = f"{_WD}/wday/cxs/acme/External/job/USA/SWE_R1"
+
+
+def test_workday_api_url_plain_job():
+    assert workday_api_url(_WD_JOB) == _WD_API
+
+
+def test_workday_api_url_drops_locale_and_apply():
+    assert workday_api_url(f"{_WD}/en-US/External/job/USA/SWE_R1") == _WD_API
+    assert workday_api_url(_WD_JOB + "/apply") == _WD_API
+
+
+def test_workday_api_url_jobs_details_form():
+    url = f"{_WD}/en-US/External/jobs/details/SWE_R1/apply"
+    assert workday_api_url(url) == f"{_WD}/wday/cxs/acme/External/job/SWE_R1"
+
+
+def test_workday_api_url_rejects_non_job_pages():
+    assert workday_api_url(f"{_WD}/en-US/External") is None
+    assert workday_api_url(f"{_WD}/External?q=swe") is None
+    assert workday_api_url("https://boards.greenhouse.io/acme/jobs/1") is None
+
+
+def test_workday_api_url_uppercase_host():
+    assert workday_api_url("HTTPS://ACME.WD5.MYWORKDAYJOBS.COM/External/job/USA/SWE_R1") == _WD_API
+
+
+def test_get_workday_job_maps_fixture():
+    body = _load("workday_detail.json")
+    info = body["jobPostingInfo"]
+    with patch.object(ats_client.requests, "get", return_value=_response(body)) as get:
+        job = get_workday_job(
+            "https://collegeboard.wd1.myworkdayjobs.com/en-US/CBCareers/job/Software-Engineer-I--New-Grad-_REQ002974-1",
+            timeout=8,
+        )
+    assert get.call_args.kwargs["timeout"] == 8
+    headers = get.call_args.kwargs["headers"]
+    assert "Mozilla" in headers["User-Agent"]
+    assert headers["Accept"] == "application/json"
+    assert job["title"] == info["title"]
+    assert job["location"] == info["location"]
+    assert job["additional_locations"] == ["US, TX, Austin"]
+    assert job["country"] == "United States of America"
+    assert job["start_date"] == info["startDate"]
+    assert job["jd_text"] and "<" not in job["jd_text"]
+    assert "Software Engineer" in job["jd_text"]
+
+
+def test_get_workday_job_missing_country_and_locations():
+    body = _load("workday_detail.json")
+    info = dict(body["jobPostingInfo"])
+    info.pop("country")
+    info.pop("additionalLocations")
+    body = dict(body, jobPostingInfo=info)
+    with patch.object(ats_client.requests, "get", return_value=_response(body)):
+        job = get_workday_job(_WD_JOB, timeout=5)
+    assert job["country"] is None
+    assert job["additional_locations"] == []
+
+
+def test_get_workday_job_errors():
+    with patch.object(ats_client.requests, "get", return_value=_response({}, 403)):
+        with pytest.raises(AtsError) as info:
+            get_workday_job(_WD_JOB, timeout=5)
+    assert info.value.detail == "HTTP 403"
+    with patch.object(ats_client.requests, "get", side_effect=requests.Timeout("slow")):
+        with pytest.raises(AtsError) as info:
+            get_workday_job(_WD_JOB, timeout=5)
+    assert info.value.detail == "Timeout"
+    bad = MagicMock()
+    bad.ok = True
+    bad.status_code = 200
+    bad.json.side_effect = ValueError("nope")
+    with patch.object(ats_client.requests, "get", return_value=bad):
+        with pytest.raises(AtsError) as info:
+            get_workday_job(_WD_JOB, timeout=5)
+    assert info.value.detail == "invalid JSON"
+    with patch.object(ats_client.requests, "get", return_value=_response({"other": 1})):
+        with pytest.raises(AtsError) as info:
+            get_workday_job(_WD_JOB, timeout=5)
+    assert info.value.detail == "missing jobPostingInfo"
+
+
+def test_get_workday_job_non_workday_does_not_request():
+    with patch.object(ats_client.requests, "get") as get:
+        with pytest.raises(AtsError):
+            get_workday_job("https://example.com/jobs/1", timeout=5)
+    get.assert_not_called()
 
 
 def test_empty_board_returns_empty_list():

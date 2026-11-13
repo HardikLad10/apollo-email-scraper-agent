@@ -82,6 +82,22 @@ def test_strips_trailing_apply_workable_with_slash():
     assert normalize_url(url) == "https://apply.workable.com/tiger-analytics/j/13C9E82229"
 
 
+def test_workday_locale_urls_normalize_together():
+    host = "https://nvidia.wd5.myworkdayjobs.com"
+    path = "/NVIDIAExternalCareerSite/job/USA/SWE_JR1"
+    assert normalize_url(host + "/en-US" + path) == normalize_url(host + path)
+
+
+def test_locale_strip_only_on_workday():
+    url = "https://jobs.apple.com/en-us/details/200-123/swe"
+    assert normalize_url(url) == url
+
+
+def test_strips_locations_param():
+    url = "https://example.com/jobs/1?locations=Austin&keep=1"
+    assert normalize_url(url) == "https://example.com/jobs/1?keep=1"
+
+
 def test_strips_trailing_apply_nvidia_keeps_path_case():
     url = (
         "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/"
@@ -162,7 +178,7 @@ def test_mixed_everything():
     ("https://www.google.com/about/careers/applications/jobs/results/123-swe", "company_site"),
     ("https://jobs.apple.com/en-us/details/200-123/swe", "company_site"),
     ("https://jobs.careers.microsoft.com/global/en/job/123", "company_site"),
-    ("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/SWE_JR1", "company_site"),
+    ("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/SWE_JR1", "workday"),
     ("https://www.tesla.com/careers/search/job/swe-123", "company_site"),
     ("https://www.metacareers.com/jobs/123/", "company_site"),
     ("https://explore.jobs.netflix.net/careers/job/123", "company_site"),
