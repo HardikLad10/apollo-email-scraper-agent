@@ -1,0 +1,1 @@
+source_row_id,input_hash,result_id,run_id,status,job_url,job_title,company_domain,apollo_id,name,title,linkedin_url,email,email_status,email_source,employer_match,team_match,evidence,review_flags,draft_subject,draft_body,lookup_outcome,selected_profile,source_hashes,profile_hash,prompt_hash,created_at,selection_reason,reuse_type,reused_from_run_id

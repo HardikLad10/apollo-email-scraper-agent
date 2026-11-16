@@ -1,5 +1,7 @@
 # Secrets
 .env
+.env.*
+!.env.example
 *.json.b64
 service_account*.json
 credentials*.json
@@ -33,3 +35,10 @@ venv/
 .vscode/
 .idea/
 .cursor/
+
+# Private pilot data and persistent provider accounting
+local-data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+profile.md

@@ -1,0 +1,10 @@
+sources:
+  fullstack:
+    path: ../fullstack.tex
+    reviewed_active_sha256: a12eeab3d654bc484780662d83704d34004e73fc043dad51cdbb61aad53df1eb
+  amazon:
+    path: ../Hardik_Lad_Resume_Amazon.tex
+    reviewed_active_sha256: 54048aa36f0fb058e50345f933d3eb5007d57b8406903493806e96bec43bd2d8
+  accessibility:
+    path: ../FDE_accessibility.tex
+    reviewed_active_sha256: 707b2f2946aa320a5293787c2c7f7a44725d4a1fb57fff143836bd8542b50736

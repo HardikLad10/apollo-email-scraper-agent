@@ -1,0 +1,2 @@
+-r requirements-pilot.txt
+pytest==7.4.4

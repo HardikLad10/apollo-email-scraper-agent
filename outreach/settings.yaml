@@ -1,0 +1,19 @@
+timezone: America/Chicago
+state_path: local-data/state.sqlite3
+output_dir: local-data/exports
+allocation_confirmed: false
+enrich_daily_limit: 5
+enrich_run_limit: 5
+max_contacts: 3
+search_pages_per_job: 1
+search_page_size: 25
+search_daily_limit: 5
+draft_run_limit: 3
+draft_daily_limit: 5
+cache_ttl_days: 7
+timeout_seconds: 15
+draft_timeout_seconds: 60
+max_tokens: 8192
+queue_contacts_per_job: 1
+queue_default_draft_email: true
+queue_target_role: Software Engineer

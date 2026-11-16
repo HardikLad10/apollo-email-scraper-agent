@@ -1,4 +1,47 @@
-# job-hunt-tools
+# apollo-email-scraper-agent
+
+## Hardik's URL outreach pilot — start here
+
+Normal input is now one URL or `Full Name | Company`. In the existing Queue fill only
+column C; IDs/readiness/defaults are handled by code. See the first section of the pilot
+guide. Known people use direct enrichment; job URLs use contact discovery plus drafts.
+
+
+The new `outreach` command accepts a job URL, or company website plus target role,
+and can discover Apollo contacts, enrich professional emails and draft cold emails.
+It includes a shared Google Sheets input queue. Local SQLite guards usage and saves
+results before export. This route has passed a bounded live Apollo/Claude test and mocked Sheet integration
+checks. Live Google API write-back still needs credentials. Sending is manual.
+
+Read [the pilot instructions](docs/URL_OUTREACH_GUIDE.md) for installation, input and
+Sheet headers. `scope.md` and the checkpoint plan govern this pilot. Live mode is
+disabled until the shared allocation is confirmed in `outreach/settings.yaml`.
+
+The older sections below describe upstream tools. The old `email_finder` command
+retains its original Sheets dependency, per-run-only limit, provider fallbacks and
+LinkedIn-note drafting; it does **not** inherit the new safeguards. The scanner's
+schedule has not been enabled for this pilot.
+
+## Current Sheet workflow
+
+Append job URL and company URL in Queue; all operational columns are tool-managed.
+`--sync-sheet` processes new rows and writes Results/statuses through Google APIs.
+Exact completed duplicates reuse the saved contact and draft with zero provider/page
+calls, including recognized tracking-link variants. A different job at the same
+company reuses an eligible fresh contact and generates a job-specific draft. Results
+include selection reasoning and reuse provenance after `--setup-sheet` adds the
+optional headers. Duplicate appended rows each receive their own result record.
+
+Local SQLite retains results and original enrichment expiry across restarts. Reuse
+does not renew contact validity; expired data is held for reviewed refresh. The
+current selector still uses company/title rules and does not establish the actual HM.
+Google API credentials and agreed routine live limits remain required setup inputs.
+No background watcher is running. Draft improvements and Notion/Actions hosting are
+phase 2. The inherited scanner workflow is stored under `.github/disabled-workflows/`
+so publishing this repository does not activate its schedule.
+
+The sections below are inherited upstream documentation; their scanner/legacy claims
+do not describe an enabled deployment in this repository.
 
 ## What this does
 
