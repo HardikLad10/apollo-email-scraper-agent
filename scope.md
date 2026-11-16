@@ -497,3 +497,37 @@ Hardik applies before emailing, so drafts assume `applied` unless a job says oth
 recruiters are asked to look at the application, engineering managers for a brief chat,
 engineers for a referral or quick chat, executives for a chat or a pointer, and anyone
 outside the hiring path only for a pointer to the right person.
+
+## Local handoff and verified remaining work — November 16, 2026
+
+Saved the requested private chat-context handoff at local-data/CHAT_HANDOFF.md after
+PC access returned; the prior disconnected attempt had not created it. Fresh offline
+verification of the current source passes all 833 tests, including missing-JD and
+LinkedIn/reuse/recovery behavior and the new applied-default/recipient-ask change.
+
+The prior three live jobs are complete. Extra Syllo paid acceptance remains pending
+explicit authorization after automatic approval review rejected that additional job.
+Historical workbook-reference redaction and restoring public repository visibility
+are still unfinished; the repository currently reports PRIVATE. No paid call, Sheet
+write, sending, history rewrite, or visibility change occurred during this check.
+
+## Company-interest email — November 16, 2026
+
+Queue rows with `application_status` = `interested`, a `company_url`, no `job_url`, and a
+target role such as "Forward Deployed Engineer / Software Engineer" produce a
+company-interest email: same three-bullet flow as job emails, no link, with Claude
+researching what the company builds and mapping it to Hardik's profile.
+
+## Publication decision — November 16, 2026
+
+Hardik accepted the historical workbook-reference exposure because the Sheet is
+Restricted. The proposed Git history rewrite is cancelled; preserve existing history
+and keep actual workbook identifiers out of new tracked content. Runtime credentials
+and workbook configuration stay ignored, and the privacy commit guard remains active.
+Repository visibility has been restored to PUBLIC and verified through GitHub's API.
+
+Publish the pending documentation and current feature commits on
+feat/cold-email-draft-v2, without merging or advancing main. Current offline suite:
+834 passed; dependencies resolve. Missing JD remains a limited-context route rather
+than a contact-lookup blocker. Extra Syllo paid acceptance remains separately pending
+explicit authorization; no new paid run or Sheet update is part of publication.

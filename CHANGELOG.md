@@ -844,3 +844,54 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
   Claude did not use the ask verbatim, `ask_modified` (flag only).
 - Updated `test_drafts_and_application_claims_are_explicit` to the new applied default.
   833 tests passed offline. No provider calls.
+
+## 2026-11-16 (America/Chicago) — Local handoff saved and current edge cases reverified
+
+- Reconnected to the PC and confirmed the requested chat-context Markdown had not
+  been created during the disconnect. Saved a private ignored handoff at
+  local-data/CHAT_HANDOFF.md and updated the execution checklist.
+- Reviewed missing-JD, HTML job parsing, LinkedIn identity intake, duplicate/contact
+  reuse, and recovery regressions. Fresh complete offline suite: 833 passed (4.92s).
+  Preserved the newer application-default and recipient-specific ask changes.
+- Existing private receipt confirms the prior three-row live batch; no new paid
+  provider calls, Sheet writes, or message sends occurred for this status review.
+- Fresh read-only GitHub check reports PRIVATE visibility. Historical workbook
+  redaction and public restoration remain unfinished; expected mirror/lease files
+  from the interrupted operation were absent. Do not claim history cleanup finished.
+- Syllo's missing-JD code is implemented, but the extra paid acceptance run remains
+  pending explicit authorization after the earlier automatic approval rejection.
+
+## 2026-11-16 (America/Chicago) — Company-interest email and Queue dropdown (Cursor agent)
+
+- Queue column K (`application_status`): added a strict dropdown (`applied`,
+  `interested`) from row 2 down via one Sheets `setDataValidation` request. No cell values
+  changed. Blank still means the `default_application_status` (applied).
+- Hardik's `interested` use case: no specific job, interested in what the company builds,
+  looking for FDE/SWE roles. Implemented as the existing no-job-URL ("networking") mode:
+  now three bullets like job emails (authorization + two best-matching proofs), 100–140
+  words, `research_focus` in the case data directs web search to what the company builds,
+  for whom and what it values; opener names one verifiable company detail plus the target
+  role; no link. Profile stays automatic (FDE/SWE → amazon when `ready` is blank).
+- 834 tests passed offline. No provider calls.
+
+## 2026-11-16 (America/Chicago) — Publish current feature branch and restore public access
+
+- Hardik accepted retaining historical workbook references because the Google Sheet
+  is Restricted. This supersedes the proposed historical rewrite: no force push or
+  history sanitization is required for this publication. Current tracked documents
+  remain redacted and future commits remain protected by the installed privacy guard.
+- Restored GitHub repository visibility to PUBLIC and verified that state through
+  the GitHub API. The workbook's access controls were not changed.
+- Fresh complete offline suite: 834 passed (4.02s); dependency check found no broken
+  requirements. Missing-JD context/drafting and staged privacy-guard regressions pass.
+- Audited current tracked files for configured credential values and the workbook
+  identifier: zero hits. Audited 336 reachable history blobs: no configured credential
+  values; historical workbook references remain by the user's decision. Credentials,
+  profile and local-data artifacts remain ignored/untracked. This is a scoped scan,
+  not a guarantee that arbitrary unknown secrets can never exist.
+- Prepared the pending scope/changelog updates for publication with the three local
+  feature commits: missing-JD/redaction/guard, applied-default/recipient-specific ask,
+  and company-interest email research. Target is feat/cold-email-draft-v2; main is
+  not merged or advanced by this task. No new paid calls, Sheet writes or sends.
+- The extra Syllo live acceptance still requires explicit authorization after the
+  prior automatic review rejection; offline verification does not claim a live run.
