@@ -70,7 +70,7 @@ def test_job_message_fields():
 def test_networking_message_fields():
     data = message_data(NETWORK, Candidate('fullstack',('a','b','c'),(),{},'hash'))
     assert data['job_url'] is None and data['email_mode'] == 'networking'
-    assert data['required_first_bullet'] is None and data['format'] == 'two_hyphen_bullets'
+    assert data['required_first_bullet'] is None and data['format'] == 'three_hyphen_bullets'
     assert data['ask_kind'] == 'recruiter' and 'open engineering roles' in data['ask']
 
 
@@ -127,12 +127,17 @@ def test_wrong_first_bullet_fails():
     with pytest.raises(DraftError, match='work-authorization'): drafter.draft(JOB, PERSON, CANDIDATE, Request())
 
 
-def test_networking_requires_two_bullets():
-    three = email(AUTH,'One.','Two.', link=None)
-    drafter, _ = client(response(text(three)))
-    with pytest.raises(DraftError, match='exactly 2'): drafter.draft(NETWORK, PERSON, CANDIDATE, Request())
+def test_company_interest_email_uses_three_bullets_and_no_link():
     drafter, _ = client(response(text(email(AUTH,'One.', link=None))))
+    with pytest.raises(DraftError, match='exactly 3'): drafter.draft(NETWORK, PERSON, CANDIDATE, Request())
+    drafter, _ = client(response(text(email(AUTH,'One.','Two.', link=None))))
     assert drafter.draft(NETWORK, PERSON, CANDIDATE, Request()).subject
+
+
+def test_company_interest_message_points_research_at_company():
+    data = message_data(NETWORK)
+    assert data['email_mode'] == 'networking' and 'what the company builds' in data['research_focus']
+    assert message_data(JOB)['research_focus'] is None
 
 
 def test_over_length_is_flagged_not_rejected():
@@ -172,7 +177,7 @@ def test_prompt_v2_examples_satisfy_parser():
     job, networking = re.findall(r'<example[^>]*>\n(.+?)\n</example>', prompt, re.S)
     assert len(parse_draft(job).body.split()) <= 150
     assert 'https://' in job and 'https://' not in networking
-    parse_draft(networking, bullets=2)
+    parse_draft(networking)
     assert 'required_first_bullet' in prompt
 
 

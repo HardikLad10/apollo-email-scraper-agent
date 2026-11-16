@@ -69,14 +69,25 @@ searching; the response must still be only the finished email.
 
 Keep the body between 100 and 140 words, including greeting and sign-off.
 
-## Structure for `email_mode: networking`
+## Structure for `email_mode: networking` (company interest, no job link)
 
-Used when no job URL was supplied. Same greeting and sign-off. One opening line about
-software engineering roles at the company, with no link and no claim that a specific
-opening exists. Exactly two hyphen bullets: `required_first_bullet` verbatim, then the
-single most relevant fact. One fit sentence from search or the supplied company and role.
-Ask: the case's `ask` sentence, copied exactly. Keep the body
-between 70 and 110 words.
+Used when no job URL was supplied: Hardik is interested in what the company does and is
+looking for roles matching the case's target role (for example Forward Deployed Engineer
+or Software Engineer). Follow the same flow as a job email, with these differences:
+
+- Research first (`research_focus`): use web search to learn what the company builds, for
+  whom, and what it values. Prefer the company's own site. Do not claim any opening exists.
+- Subject: `<Target role> roles at <Company>`.
+- Opening line: one specific, verifiable thing the company is building, then that Hardik is
+  looking for <target role> roles. No link.
+- Exactly three hyphen bullets: `required_first_bullet` verbatim, then the two candidate
+  facts that best match what the company builds, outcome first.
+- One or two fit sentences connecting the company's product, customers, or values from
+  research to a specific piece of Hardik's experience. If research finds nothing
+  reliable, use only the supplied company name and target role and keep it brief.
+- Ask: the case's `ask` sentence, copied exactly.
+
+Keep the body between 100 and 140 words.
 
 ## Voice and wording
 
@@ -118,16 +129,17 @@ Thanks,
 Hardik Lad
 </example>
 <example format="networking">
-Subject: Software engineering roles at Example Health
+Subject: Software Engineer roles at Example Health
 
 Hi Priya,
 
-I'm reaching out about software engineering roles on your team at Example Health.
+I've been following how Example Health is moving clinic scheduling online for small practices, and I'm looking for Software Engineer roles on your team.
 
 - Graduated in May with an MS in Computer Science; authorized to work in the U.S. and available to start immediately.
-- Built React and Node.js tools that cut manual tracking 25% for a 40-person operations team.
+- Cut manual tracking 25% for a 40-person operations team by building React and Node.js tools.
+- Made appointment reports 2x faster by redesigning queries on a 200K-row Postgres table.
 
-Example Health's focus on simpler clinic scheduling for patients appeals to me, and removing manual steps for non-technical users is the work I've enjoyed most.
+Your site describes the goal as fewer phone calls for front-desk staff. Removing manual steps for non-technical users is the work I've enjoyed most, from learning their workflow to supporting the rollout.
 
 Would you be open to a brief chat about engineering roles on your team?
 
@@ -139,7 +151,8 @@ Hardik Lad
 ## Final check and output
 
 Before responding, confirm: the first bullet matches `required_first_bullet` exactly; the
-exact `job_url` appears in job mode; the bullet count is right for the mode; every claim
+exact `job_url` appears in job mode and no link appears in networking mode; there are
+exactly three bullets; every claim
 comes from the supplied facts, the job description, or a search result; the ask is the case's
 `ask` sentence; the length target is met; no banned wording or placeholders remain.
 

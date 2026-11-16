@@ -59,7 +59,8 @@ def build_message(context, person, candidate, request):
             'required_first_bullet':required_first_bullet(candidate) or None,
             'job_description_status':'missing' if missing_jd else 'available',
             'context_limitations':('The job description is unavailable. Do not infer responsibilities, requirements, team membership or hiring ownership. Use only the observed role/company, supported candidate facts and verified company research.' if missing_jd else None),
-            'format':'two_hyphen_bullets' if networking else 'three_hyphen_bullets',
+            'format':'three_hyphen_bullets',
+            'research_focus':'what the company builds, for whom, and what it values; match it to the most relevant candidate facts' if networking else None,
             'ask_kind':kind,'ask':ask}
     # Provenance stays local; only selected supported material and restrictions go to Claude.
     data['candidate'].pop('source_hashes')
@@ -123,7 +124,7 @@ class DraftClient:
         if responses[-1].stop_reason != 'end_turn': raise DraftError('Claude output incomplete; no automatic retry')
         blocks = [block for result in responses for block in result.content if block.type=='text']
         # Cited passages arrive as separate text blocks inside one sentence.
-        draft = parse_draft(''.join(block.text for block in blocks),3 if context.job_url else 2)
+        draft = parse_draft(''.join(block.text for block in blocks))
         flags = list(check_draft(draft,context,candidate))+[f'api_requests:{len(responses)}']
         kind, ask = ask_for(person,context,request)
         flags.append(f'ask:{kind}')
