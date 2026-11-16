@@ -725,3 +725,24 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
   No pending attempts/row claims; persistent allocation_confirmed remains false.
   Google credentials are still missing, so final Sheet-to-Sheet live acceptance is
   pending the one-time connection and user-supplied new test URLs.
+
+
+## 2026-11-15 — Dry-run supplied Queue rows and support HTML job pages
+
+- Public Queue read: four nonempty/valid inputs, one contact and a draft requested per
+  row. Three new rows lack company URLs; no Sheet values/statuses were changed.
+- Read job pages without Apollo/Claude. Found that the new pages have role H1 headings
+  but no structured JobPosting data. Reproduced the parser failure, then added an
+  unambiguous role-heading fallback with employer verification preserved. Prefer JD
+  containers and exclude forms/navigation/footer; reject explicit placeholder-only JDs.
+- Added tests/test_url_outreach_html_jobs.py: observed four failures before the fix;
+  then six new cases passed, covering title extraction, missing employer, ambiguous
+  headings, generic careers pages and placeholder versus substantive descriptions.
+  Full suite: 810 passed (3.82s), including nine audited strict dry-run variants.
+- Rechecked actual pages: one row ready as entered; two pass context/profile/preview
+  with verified company URLs supplied only in memory; one listing has n/a instead of
+  role requirements and stays needs_context even after the company override.
+- Saved the detailed private dry-run JSON/Markdown under ignored local-data/reports/.
+  Ledger hash unchanged, zero paid provider calls, zero Sheet writes. Google API
+  credentials remain absent and routine live remains disabled. Per-run draft cap is
+  three; the three potentially ready rows fit one later conservative acceptance batch.

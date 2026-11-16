@@ -430,3 +430,19 @@ routine live remains off. Google API setup is the remaining external dependency;
 see docs/GOOGLE_SHEETS_SETUP.md and docs/reviews/2026-11-15-v2-intake-readiness.md.
 Once connected, the user adds C=input URL and D=company website (optional for people);
 one on-demand API sync fills Results and statuses. No automatic watcher is enabled.
+
+
+## Supplied Sheet dry-run result — November 15, 2026
+
+Four rows validated syntactically. The public-page check exposed and fixed missing
+plain-HTML title/JD fallback without weakening employer-domain confirmation. Exactly
+one role H1 is accepted; forms/navigation/footer are excluded from fallback JD text;
+explicit placeholder-only role descriptions stop before paid work. Full suite: 810 passed.
+
+One row is ready as entered, two need company websites in D, and the remaining row
+also needs a complete JD rather than the posting's n/a content. See the ignored
+local-data/reports/2026-11-15-sheet-dry-run.md receipt. Company corrections were tested
+in memory only, not written to the Sheet. No provider calls, Sheet writes or quota
+changes occurred. Google API authentication is still missing. After setup/corrections,
+start with the three valid-JD rows under the existing three-draft run cap; hold the
+incomplete posting. The user's current request authorized a dry run, not a paid run.

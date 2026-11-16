@@ -183,6 +183,31 @@ def _jobs(value):
         if '@graph' in value: yield from _jobs(value['@graph'])
 
 
+def _html_job_title(soup):
+    scope = soup.find('main') or soup
+    role = r'\b(?:engineer|developer|analyst|manager|director|scientist|designer|architect|specialist|consultant|officer|recruiter|associate|intern|lead|head|technician|researcher|administrator|coordinator|representative|executive|counsel|accountant|sales|support)\b'
+    titles = {heading.get_text(' ',strip=True) for heading in scope.find_all('h1')}
+    titles = {title for title in titles if re.search(role,title,re.I)}
+    if len(titles)>1: raise NeedsContext('Multiple role headings on page; provide a single-job URL or explicit target role')
+    return next(iter(titles),None)
+
+
+def _html_job_description(soup):
+    for selector in ('[itemprop="description"]','.job__description','.job-description','.job-description__content','article','main'):
+        nodes = soup.select(selector)
+        if len(nodes)==1 and nodes[0].get_text(' ',strip=True):
+            node = nodes[0]
+            break
+    else: node = soup
+    text = node.get_text(' ',strip=True)
+    placeholder = any(re.fullmatch(r'(?:n/?a|tbd|not available|coming soon)',part.strip(),re.I)
+                      for part in node.stripped_strings)
+    role_details = re.search(r'\b(?:responsibilit(?:y|ies)|qualifications?|requirements?|you will|you.ll|about the role|what you bring|your impact)\b',text,re.I)
+    if placeholder and not role_details:
+        raise NeedsContext('Job description is a placeholder; provide the complete posting or actual JD text')
+    return text
+
+
 def resolve_context(request: Request, *, fetch=fetch_public_text) -> Context:
     validate_request(request)
     page = ''
@@ -213,12 +238,17 @@ def resolve_context(request: Request, *, fetch=fetch_public_text) -> Context:
             # Generic job hosts cannot safely be presumed to be the employer.
             raise NeedsContext('Confirm company URL; page did not identify hiring organization domain')
     title = request.target_role or job.get('title')
+    heading_title = None
+    if not title and request.job_url:
+        heading_title = _html_job_title(soup)
+        title = heading_title
     if not company_domain or not isinstance(title, str) or not title.strip():
         raise NeedsContext('Missing company URL/domain or target role; provide overrides and JD')
-    for tag in soup(['script', 'style', 'noscript', 'template', 'svg']): tag.decompose()
-    description = request.job_description or BeautifulSoup(str(job.get('description') or ''), 'html.parser').get_text(' ', strip=True) or soup.get_text(' ', strip=True)
+    for tag in soup(['script', 'style', 'noscript', 'template', 'svg', 'form', 'nav', 'footer']): tag.decompose()
+    description = request.job_description or BeautifulSoup(str(job.get('description') or ''), 'html.parser').get_text(' ', strip=True) or _html_job_description(soup)
     source = request.job_url or request.company_url
     evidence = (Evidence('employer_domain', company_domain, source, 'confirmed' if expected or employer else 'unknown'),)
+    if heading_title: evidence += (Evidence('job_title',heading_title,source,'confirmed'),)
     terms = tuple(dict.fromkeys(re.findall(r'(?i)\b(?:team|platform|product)\s+([A-Za-z][A-Za-z0-9 -]{1,45})', description)))[:5]
     return Context(str(organization.get('name') or company_domain), company_domain, title.strip(), request.job_url,
                    description[:20000], terms, evidence)
