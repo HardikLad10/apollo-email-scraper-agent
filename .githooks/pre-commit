@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+project_root=$(git rev-parse --show-toplevel)
+runtime="$project_root/.venv/bin/python"
+if [ ! -x "$runtime" ]; then runtime=python3; fi
+exec "$runtime" "$project_root/scripts/check_private_config.py"

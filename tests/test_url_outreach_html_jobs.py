@@ -33,12 +33,14 @@ def test_generic_careers_heading_is_not_a_role():
                         fetch=lambda _: '<h1>Current openings</h1><p>Browse the team.</p>')
 
 
-def test_placeholder_description_stops_before_a_complete_job_is_claimed():
+def test_placeholder_description_preserves_role_and_marks_limited_context():
     page='''<main><h1>Platform Software Engineer</h1><div class="job__description">
     <p>About Example</p><p>Example builds enterprise tools for business teams.</p><p>n/a</p>
     <p>United States - Remote Pay Range</p><p>$100,000 - $120,000</p></div></main>'''
-    with pytest.raises(NeedsContext,match='description.*placeholder'):
-        resolve_context(Request(job_url='https://job-boards.greenhouse.io/example/jobs/123',company_url='https://example.org'),fetch=lambda _:page)
+    result=resolve_context(Request(job_url='https://job-boards.greenhouse.io/example/jobs/123',company_url='https://example.org'),fetch=lambda _:page)
+    assert result.job_title=='Platform Software Engineer'
+    assert any(e.kind=='job_description' and e.value=='missing_role_details' for e in result.evidence)
+    assert 'n/a' not in result.description
 
 
 def test_role_specific_description_can_have_an_unrelated_na_field():

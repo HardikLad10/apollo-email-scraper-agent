@@ -22,10 +22,13 @@ def required_first_bullet(candidate):
 
 def build_message(context, person, candidate, request):
     networking = not context.job_url
+    missing_jd = any(e.kind=='job_description' and e.value=='missing_role_details' for e in context.evidence)
     data = {'recipient':asdict(person),'job':asdict(context),'candidate':asdict(candidate),
             'application_status':request.application_status,'resume_attached':request.resume_attached,
             'notes':request.notes,'job_url':context.job_url,'email_mode':'networking' if networking else 'job',
             'required_first_bullet':required_first_bullet(candidate) or None,
+            'job_description_status':'missing' if missing_jd else 'available',
+            'context_limitations':('The job description is unavailable. Do not infer responsibilities, requirements, team membership or hiring ownership. Use only the observed role/company, supported candidate facts and verified company research.' if missing_jd else None),
             'format':'two_hyphen_bullets' if networking else 'three_hyphen_bullets',
             'ask':'brief conversation about roles on your team' if networking else 'brief conversation about the role'}
     # Provenance stays local; only selected supported material and restrictions go to Claude.

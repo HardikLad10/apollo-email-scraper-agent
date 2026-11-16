@@ -188,6 +188,9 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
                 flags.append('no_match')
             elif not identity: flags.append('person_identity_unverified')
         else: context = resolve_context(request,fetch=fetch)
+        if any(e.kind=='job_description' and e.value=='missing_role_details' for e in context.evidence):
+            metadata['job_description_status']='missing'
+            flags.append('job_description_missing')
         candidate = None
         if request.draft_email:
             if drafter is None: raise DraftError('Drafting requested without configured client')

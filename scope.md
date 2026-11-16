@@ -266,7 +266,7 @@ authorization. This planning step does not authorize the live test or any sendin
 The new adapter reads the private workbook's `Queue` tab, processes ready rows through
 one shared guarded service, and writes `Results` plus Queue statuses. Lock the concrete
 v1 headers in `config/sheets_queue_headers.csv` and `config/sheets_results_headers.csv`.
-The supplied workbook is `1a4nOTFRZcjvLsUmJxcCrnkTG78spVdd6lmfODdvnN7U`; Queue/Results headers were verified in-browser (19/27). Python Google authentication remains a setup input; routine processing uses the API, not browser automation.
+The supplied workbook is `YOUR_SHEET_ID`; Queue/Results headers were verified in-browser (19/27). Python Google authentication remains a setup input; routine processing uses the API, not browser automation.
 
 Run on demand only. `--preview-sheet` reads/validates without provider calls or writes;
 `--sync-sheet` processes ready rows. `--dry-run` performs no network at all. Stable row
@@ -462,3 +462,30 @@ incomplete job description. Stable row IDs were assigned. No paid contact lookup
 Claude draft, send, allowance change or invented result occurred. Full suite: 810 passed;
 local ledger unchanged. Google authentication is no longer a blocker; next acceptance
 is the bounded three-row live test. Routine/background live processing remains off.
+
+
+## Current workbook sharing — November 15, 2026
+
+User restricted the Sheet and granted the configured service account Editor access.
+Authenticated API preview was reverified successfully after the change; public link
+access is no longer needed for this workflow. No provider call or Sheet write occurred.
+
+
+## Live execution and missing-JD policy correction — November 15, 2026
+
+The three explicitly approved jobs completed: three contact emails and three drafts
+are present in Results. Total new operations: two Apollo searches, two enrichments,
+three logical drafts; no email sent. Routine live mode remains disabled outside this
+bounded invocation.
+
+Missing JD is a quality/uncertainty flag, not a contact-lookup blocker. When company
+and role are known, proceed with supported facts and an honest role/company-level
+email; never invent requirements, teams or hiring responsibility. Syllo's limited-JD
+route is implemented/tested, but its paid run was rejected by automatic approval
+review pending explicit authorization for that extra job. One daily draft unit remains.
+
+Private workbook IDs/URLs belong only in ignored runtime configuration. Previously
+published examples/log references are being sanitized in files and branch history;
+the relevant private identifier is redacted even in historical append-only notes.
+Use installed .githooks/pre-commit or scripts/check_private_config.py to check staged
+files. A local chat-context handoff will record the verified final state and blockers.

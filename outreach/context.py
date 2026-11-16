@@ -203,9 +203,11 @@ def _html_job_description(soup):
     placeholder = any(re.fullmatch(r'(?:n/?a|tbd|not available|coming soon)',part.strip(),re.I)
                       for part in node.stripped_strings)
     role_details = re.search(r'\b(?:responsibilit(?:y|ies)|qualifications?|requirements?|you will|you.ll|about the role|what you bring|your impact)\b',text,re.I)
-    if placeholder and not role_details:
-        raise NeedsContext('Job description is a placeholder; provide the complete posting or actual JD text')
-    return text
+    missing = not text or bool(placeholder and not role_details)
+    if missing:
+        text = ' '.join(part for part in node.stripped_strings
+                        if not re.fullmatch(r'(?:n/?a|tbd|not available|coming soon)',part.strip(),re.I))
+    return text, missing
 
 
 def resolve_context(request: Request, *, fetch=fetch_public_text) -> Context:
@@ -245,10 +247,16 @@ def resolve_context(request: Request, *, fetch=fetch_public_text) -> Context:
     if not company_domain or not isinstance(title, str) or not title.strip():
         raise NeedsContext('Missing company URL/domain or target role; provide overrides and JD')
     for tag in soup(['script', 'style', 'noscript', 'template', 'svg', 'form', 'nav', 'footer']): tag.decompose()
-    description = request.job_description or BeautifulSoup(str(job.get('description') or ''), 'html.parser').get_text(' ', strip=True) or _html_job_description(soup)
+    raw_description = request.job_description or job.get('description')
+    if raw_description:
+        description, missing_jd = _html_job_description(BeautifulSoup(str(raw_description),'html.parser'))
+    else:
+        description, missing_jd = _html_job_description(soup)
+        if description.casefold().strip()==title.casefold().strip(): missing_jd=True
     source = request.job_url or request.company_url
     evidence = (Evidence('employer_domain', company_domain, source, 'confirmed' if expected or employer else 'unknown'),)
     if heading_title: evidence += (Evidence('job_title',heading_title,source,'confirmed'),)
+    if missing_jd: evidence += (Evidence('job_description','missing_role_details',source,'unknown'),)
     terms = tuple(dict.fromkeys(re.findall(r'(?i)\b(?:team|platform|product)\s+([A-Za-z][A-Za-z0-9 -]{1,45})', description)))[:5]
     return Context(str(organization.get('name') or company_domain), company_domain, title.strip(), request.job_url,
                    description[:20000], terms, evidence)

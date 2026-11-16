@@ -105,7 +105,7 @@ candidates; title/company matches do not prove hiring authority or team membersh
 ## Shared Sheet — exact first-version contract
 
 The supplied workbook already has `Queue` and `Results` with verified headers:
-https://docs.google.com/spreadsheets/d/1a4nOTFRZcjvLsUmJxcCrnkTG78spVdd6lmfODdvnN7U/edit
+https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
 
 Google API authentication is still required. For another workbook, create these tabs and paste/import
 row 1 from these header-only files; headers are matched by name and can be reordered:

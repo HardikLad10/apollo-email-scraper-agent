@@ -405,7 +405,7 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
 ## 2026-11-15 — Record shared workbook setup completed in the browser
 
 - Recorded previously completed, user-authorized browser setup of workbook
-  1a4nOTFRZcjvLsUmJxcCrnkTG78spVdd6lmfODdvnN7U: Queue has 19 exact headers; Results
+  YOUR_SHEET_ID: Queue has 19 exact headers; Results
   has 27. Both header contracts were verified by copying their full row.
 - Added styled/frozen headers, column sizing and filters. No contacts or drafts were
   uploaded. This is browser setup only, not Python API authentication or live pilot
@@ -645,7 +645,7 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
 
 ## 2026-11-15 — Private GitHub push verified
 
-- Published tested implementation commit a49a32902a6aeea8ede298ab5a6ee14f7ae6b5e4
+- Published tested implementation commit HISTORY_REWRITTEN
   to https://github.com/HardikLad10/apollo-email-scraper-agent on main.
 - GitHub API confirmed private visibility, default branch main, matching remote/local
   implementation SHA, and zero active Actions workflows. No secrets were uploaded.
@@ -788,3 +788,42 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
 - Zero Apollo/Claude calls or sends; ledger hash unchanged; routine live gate remains
   false. The remaining acceptance step is the bounded live run for the three ready
   rows, while the incomplete JD stays held.
+
+
+## 2026-11-15 — Restricted Sheet access reverified
+
+- User changed workbook sharing to Restricted and explicitly granted the configured
+  service account Editor access. Production --preview-sheet still succeeds: four
+  syntactically valid rows, no invalid rows, zero provider calls and zero writes.
+- Earlier anyone-with-link access notes describe the previous sharing state. No
+  permission change, paid run or code edit was made by this verification.
+- 22:21: Hardik shared the Sheet with the service account as Editor and set general access
+  to Restricted. Re-check: service account reads workbook metadata (OK); anonymous CSV
+  export now returns HTTP 401. No cell values read or written.
+
+
+## 2026-11-15 — Live three-row batch completed; missing-JD fallback and privacy cleanup
+
+- User explicitly requested processing the ready live batch. Three rows completed and
+  were written/read back through the Google API: three professional emails and three
+  v2 drafts. Used two searches, two new enrichments and three logical Claude drafts;
+  the first row reused its saved contact. No message was sent.
+- Corrected the overly strict missing-JD gate at the user's direction. Missing or
+  placeholder JD content now preserves a known role/company, records a missing-JD
+  flag, and permits email lookup plus a draft limited to supported company/role facts.
+  Prompt/case data explicitly prohibit invented requirements or hiring relationships.
+- Automatic approval review rejected the additional paid Syllo job because the explicit
+  batch authorization covered the other three. No Syllo submission occurred; ledger
+  has no pending attempts and retains one daily logical-draft unit. Do not bypass this
+  rejection. Syllo is ready_limited_context, pending explicit paid-run authorization.
+- Full suite: 815 passed, including missing-JD routing and private-config guard cases.
+- Found an incorrectly published workbook reference in three documentation files.
+  Temporarily restricted repository visibility, redacted the identifier and old local
+  commit references, and prepared targeted branch-history cleanup. A private ignored
+  Git bundle preserves rollback; original upstream ancestry is retained.
+- Privacy redaction is an explicit exception to retaining the affected identifier in
+  append-only logs; other historical text is preserved. Runtime .env and credentials
+  remain local/ignored. Added an installed pre-commit guard that rejects configured
+  private values and non-placeholder Sheet links without printing their values.
+- Final privacy verification/visibility restoration and local chat-context handoff
+  are tracked in local-data/live-batch-checklist.md. No schedules or sends enabled.

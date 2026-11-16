@@ -24,6 +24,8 @@ not proof that a feature exists. Verify claims against the implementation.
 
 ## Secrets and shared allowance
 
+- Never put actual workbook IDs/links in source, examples, scope, public logs or commits.
+  Use SHEET_ID from ignored .env; use placeholders in documentation.
 - Never print or commit real keys, service-account JSON, contact inputs/exports, or
   personal candidate files. Check ignore rules before adding such files.
 - Store credentials only in deliberately selected, ignored local paths. Inspect dotenv

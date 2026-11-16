@@ -161,3 +161,21 @@ def test_profile_lookup_cache_is_shared_with_optional_company_column(tmp_path):
                    settings=settings,store=store,fetch=lambda _:pytest.fail('Do not scrape a profile'),apollo=apollo)
         assert result.status=='done' and result.people[0].email
     assert apollo.calls==1 and store.remaining('enrich')==4
+
+
+def test_missing_jd_does_not_block_email_lookup_and_draft(workflow):
+    settings,store,_,apollo,drafter,_,_,request=workflow
+    page='<h1>Full Stack Engineer</h1><div class="job__description"><p>About Example</p><p>We build developer tools.</p><p>n/a</p></div>'
+    result=run(request,settings=settings,store=store,fetch=lambda _:page,apollo=apollo,drafter=drafter)
+    assert result.status=='done' and result.people[0].email and len(result.drafts)==1
+    assert 'job_description_missing' in result.review_flags
+    assert result.metadata['job_description_status']=='missing'
+
+
+def test_draft_payload_labels_missing_jd_instead_of_inventing_requirements():
+    from outreach.drafting import build_message
+    from outreach.models import Evidence
+    context=replace(JOB,description='Example builds developer tools.',evidence=(Evidence('job_description','missing_role_details',JOB.job_url,'unknown'),))
+    payload=json.loads(build_message(context,PERSON,CANDIDATE,Request()).split('\n',1)[1])
+    assert payload['job_description_status']=='missing'
+    assert 'do not infer' in payload['context_limitations'].lower()
