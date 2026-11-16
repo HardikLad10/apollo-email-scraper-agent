@@ -1,7 +1,8 @@
 # Connect the shared Sheet once
 
-Current blocker: no service-account credentials or Application Default Credentials
-are configured. Apollo/Anthropic keys and the workbook ID are already present.
+Status: service-account authentication and real Sheet API read/write were verified
+on November 15, 2026. Credentials stay local/ignored. These steps document setup
+for another machine; Apollo/Anthropic keys and the workbook ID are separate inputs.
 An API key alone is not the credential used by this adapter for result writes.
 
 ## One-time account setup
@@ -13,7 +14,9 @@ An API key alone is not the credential used by this adapter for result writes.
 
    `/Users/hardiklad10/projects/job-search/Apollo Email Extraction Outreach Specialist/config/service_account.json`
 
-4. In the workbook's Share dialog, add the JSON's `client_email` as an Editor.
+4. If the account does not already have edit access, share the workbook with the
+   JSON's `client_email` as an Editor. This workbook's existing anyone-with-link edit
+   sharing was sufficient in the authenticated API test; no sharing change was needed.
 5. Add this line to the existing project `.env`, preserving the provider keys:
 
 ```dotenv
@@ -68,3 +71,12 @@ requests a short v2 networking draft; it does not invent an open vacancy from th
 Final API acceptance should cover a new job, an exact duplicate (zero paid calls),
 a different job at the same company (contact reused/new draft), a personal profile,
 and a readable post author or a clear no-spend `needs_context` result.
+
+
+## Managed runtime proxy support
+
+Install requirements-sheets.txt, including PySocks==1.7.1. httplib2's proxy support
+requires this optional dependency; without it, a configured HTTP proxy is ignored
+and local DNS can fail before Google evaluates workbook permissions. The real API
+read/layout-write and all 810 tests passed after installing this dependency. TLS
+verification and credential scopes remain enabled; no custom transport is needed.

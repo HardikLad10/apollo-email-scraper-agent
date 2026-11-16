@@ -746,3 +746,45 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
   Ledger hash unchanged, zero paid provider calls, zero Sheet writes. Google API
   credentials remain absent and routine live remains disabled. Per-run draft cap is
   three; the three potentially ready rows fit one later conservative acceptance batch.
+
+
+## 2026-11-15 — Prepare one-time Google authentication path
+
+- Configured the ignored project .env GOOGLE_APPLICATION_CREDENTIALS path as
+  config/service_account.json (absolute path); existing provider keys preserved.
+  No empty credential file created. Google Cloud API enablement, actual downloaded
+  service-account JSON and workbook sharing still require the user's Google account.
+- Gave direct console links and exact download/share steps. No API/provider call,
+  Sheet write, source change or live allowance change performed.
+
+## 2026-11-15 22:10 (America/Chicago) — Google Sheets credentials wired (Cursor agent)
+
+- Found Hardik's service-account key at `config/service_account.json` (gitignored, never
+  committed, mode 600). Set `GOOGLE_APPLICATION_CREDENTIALS` in `.env` to its absolute path.
+- One read-only Sheets metadata call succeeded: workbook `apollo-email-extraction-agent`,
+  tabs `Queue` and `Results`. No values read or written; key contents never printed.
+
+
+## 2026-11-15 — Google authentication connected and actual API write verified
+
+- Validated the user-provided service-account JSON and moved it into the configured
+  ignored config/service_account.json path with mode 0600. The original unignored
+  copy was removed by the move. No key/token content was printed or staged.
+- Diagnosed the first API failure as a transport/DNS error, not a workbook permission
+  failure. AuthorizedSession over requests proved authenticated read access worked
+  with the existing anyone-with-link edit sharing. No sharing change was required.
+- Root cause: httplib2's optional PySocks dependency was absent, so its configured
+  HTTP proxy was unusable and it attempted local DNS. Installed/pinned PySocks==1.7.1
+  in requirements-sheets.txt; the normal production preview command then succeeded.
+- Ran real API-only Sheet setup and read-back verification: renamed input/company,
+  applied the simple layout and appended reuse headers. Existing Queue/Results body
+  rows were compared before/after and preserved. This proves actual API write access.
+- Filled the three blank company cells from the official websites verified during
+  the dry run, preserving any existing overrides. Assigned stable IDs and readiness
+  statuses through the API: three ready, one needs_context for the placeholder JD.
+  No invented contact, email or draft result was inserted.
+- Full suite: 810 passed (3.62s); pip check reported no broken requirements. Updated
+  Google setup guidance to reflect the verified connection and proxy dependency.
+- Zero Apollo/Claude calls or sends; ledger hash unchanged; routine live gate remains
+  false. The remaining acceptance step is the bounded live run for the three ready
+  rows, while the incomplete JD stays held.

@@ -446,3 +446,19 @@ in memory only, not written to the Sheet. No provider calls, Sheet writes or quo
 changes occurred. Google API authentication is still missing. After setup/corrections,
 start with the three valid-JD rows under the existing three-draft run cap; hold the
 incomplete posting. The user's current request authorized a dry run, not a paid run.
+
+
+## Google Sheet connection verified — November 15, 2026
+
+The service-account credential is configured locally in ignored config/service_account.json.
+Actual authenticated Sheet API read AND write now work. Existing anyone-with-link edit
+sharing was sufficient; no extra sharing permission was required in this workbook.
+Pinned the missing PySocks dependency so httplib2 can use the runtime's HTTP proxy.
+The production Sheet preview/setup commands work; input rows were preserved.
+
+Applied the simple layout/reuse headers through the API and filled verified missing
+company URLs. The Queue now shows three ready rows and one needs_context for the
+incomplete job description. Stable row IDs were assigned. No paid contact lookup,
+Claude draft, send, allowance change or invented result occurred. Full suite: 810 passed;
+local ledger unchanged. Google authentication is no longer a blocker; next acceptance
+is the bounded three-row live test. Routine/background live processing remains off.

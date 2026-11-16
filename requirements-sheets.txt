@@ -1,3 +1,4 @@
 -r requirements-pilot.txt
 google-api-python-client==2.202.0
 google-auth==2.62.2
+PySocks==1.7.1
