@@ -60,5 +60,5 @@ move inherited scanner workflow out of `.github/workflows`.
 - [x] Restore original upstream Git ancestry in this folder only.
 - [x] Document current implemented behavior, limits and pending Google authentication.
 - [x] Audit staged file names/content and exact dotenv values without printing secrets.
-- [ ] Commit on main, create the private requested repository, and push only main.
-- [ ] Verify remote commit, privacy, no active workflows and no private files tracked.
+- [x] Commit on main, create the private requested repository, and push only main.
+- [x] Verify remote commit, privacy, no active workflows and no private files tracked.
