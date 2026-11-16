@@ -17,6 +17,7 @@ VARIANTS=[
     (['https://linkedin.com/in/jordan-blake','--dry-run'],0),
     (['Jordan Blake | Northstar','--dry-run'],0),
     (['--setup-sheet','--dry-run'],0),
+    (['https://www.linkedin.com/posts/jordan-blake_activity-123-abc','--dry-run'],2),
 ]
 
 

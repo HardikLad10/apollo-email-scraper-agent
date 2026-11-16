@@ -14,7 +14,7 @@ from .sheets_queue import QueueError
 
 def _parser():
     parser=argparse.ArgumentParser(description='Budgeted Apollo discovery and review-only cold-email drafts')
-    parser.add_argument('input',nargs='?',help='LinkedIn/job/company URL, or "Full Name | Company"')
+    parser.add_argument('input',nargs='?',help='LinkedIn profile/post, job/company URL, or "Full Name | Company"')
     parser.add_argument('--company',help='Company name or website for a person lookup')
     for name in ('job-url','company-url','target-role','job-description-file','settings','output-dir','resume-run','export-run','sheet-id','reconcile','release-claim'):
         parser.add_argument('--'+name)

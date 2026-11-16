@@ -18,6 +18,25 @@ def canonical_job_url(url):
     return 'https://'+domain(url)+(parsed.path.rstrip('/') or '/')+('?' + suffix if suffix else '')
 
 
+def draft_dependencies(settings, prompt):
+    dependencies = {}
+    try:
+        root = settings.project_root
+        manifest = (root/'config/outreach_profile_sources.yaml').read_bytes()
+        dependencies['manifest'] = hashlib.sha256(manifest).hexdigest()
+        dependencies['profile'] = hashlib.sha256((root/'profile.md').read_bytes()).hexdigest()
+        config = yaml.safe_load(manifest)
+        dependencies['sources'] = {name:hashlib.sha256((root/source['path']).read_bytes()).hexdigest()
+                                  for name, source in config['sources'].items()}
+    except (OSError, KeyError, TypeError, AttributeError, yaml.YAMLError):
+        # The normal profile preflight will explain the problem without spending.
+        return None
+    from .drafting import MODEL, EFFORT
+    dependencies.update(prompt=prompt, model=MODEL, effort=EFFORT, max_tokens=settings.max_tokens,
+                        draft_web_search_max_uses=settings.draft_web_search_max_uses)
+    return dependencies
+
+
 def result_key(request, settings, prompt):
     if not request.job_url or request.linkedin_url or request.person_name: return None
     data = asdict(request)
@@ -25,21 +44,8 @@ def result_key(request, settings, prompt):
     data['job_url'] = canonical_job_url(request.job_url)
     data['company_url'] = employer_domain(request.company_url) if request.company_url else None
     data['contact_roles'] = sorted(set(request.contact_roles))
-    dependencies = {}
-    if request.draft_email:
-        try:
-            root = settings.project_root
-            manifest = (root/'config/outreach_profile_sources.yaml').read_bytes()
-            dependencies['manifest'] = hashlib.sha256(manifest).hexdigest()
-            dependencies['profile'] = hashlib.sha256((root/'profile.md').read_bytes()).hexdigest()
-            config = yaml.safe_load(manifest)
-            dependencies['sources'] = {name:hashlib.sha256((root/source['path']).read_bytes()).hexdigest()
-                                      for name, source in config['sources'].items()}
-        except (OSError, KeyError, TypeError, AttributeError, yaml.YAMLError):
-            # The normal profile preflight will explain the problem without spending.
-            return None
-        from .drafting import MODEL, EFFORT
-        dependencies.update(prompt=prompt, model=MODEL, effort=EFFORT, max_tokens=settings.max_tokens)
+    dependencies = draft_dependencies(settings,prompt) if request.draft_email else {}
+    if dependencies is None: return None
     return fingerprint({'request':data, 'draft_dependencies':dependencies})
 
 
@@ -63,7 +69,8 @@ def restore_history(request, settings, prompt, store, key):
             metadata = outcome.get('metadata',{})
             from .drafting import MODEL, EFFORT
             if (metadata.get('prompt_hash') != fingerprint(prompt) or metadata.get('model') != MODEL or
-                metadata.get('effort') != EFFORT or metadata.get('max_tokens',8192) != settings.max_tokens): continue
+                metadata.get('effort') != EFFORT or metadata.get('max_tokens',8192) != settings.max_tokens or
+                metadata.get('draft_web_search_max_uses',0) != settings.draft_web_search_max_uses): continue
             root = settings.project_root
             if metadata.get('profile_hash') != hashlib.sha256((root/'profile.md').read_bytes()).hexdigest(): continue
             config = yaml.safe_load((root/'config/outreach_profile_sources.yaml').read_bytes())

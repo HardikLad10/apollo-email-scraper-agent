@@ -68,7 +68,10 @@ def _organization_domain(organization):
 
 
 def validate_request(request: Request) -> None:
-    direct=bool(request.linkedin_url or request.person_name)
+    direct=bool(request.linkedin_url or request.person_name or request.linkedin_post_url)
+    if request.linkedin_post_url:
+        from .linkedin_posts import post_url
+        post_url(request.linkedin_post_url)
     if request.linkedin_url:
         from shared.linkedin_url import normalize_linkedin_url
         if not re.fullmatch(r'https://linkedin\.com/in/[^/\s]+',normalize_linkedin_url(request.linkedin_url)):

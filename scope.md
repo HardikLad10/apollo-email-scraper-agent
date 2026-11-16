@@ -386,3 +386,47 @@ ancestry from the original import commit, keep the friend's upstream remote, pub
 privately under HardikLad10, exclude secrets/personal runtime records, and move the
 inherited scanner workflow outside the active workflows directory. Parent Git and
 original TeX sources must remain unchanged.
+
+
+## Repository visibility — November 15, 2026
+
+Hardik explicitly requested public access. Origin at
+https://github.com/HardikLad10/apollo-email-scraper-agent is now public; anonymous
+page access was verified (HTTP 200). Earlier private-publication notes are historical.
+Secrets/private runtime records remain excluded; no scheduled workflow was enabled.
+
+
+## Cold-email draft v2 — November 15, 2026
+
+Hardik approved a shorter draft format: his confirmed graduation, work-authorization and
+immediate-availability sentence is always the first bullet (stored only in local
+`profile.md`); the job URL is always in the body; Claude reads the full JD with all eligible
+profile facts and may run up to two web searches for company values/success factors to
+write 1–2 fit lines; target 100–140 words. Without a job URL, a short networking draft is
+written instead. Design: `docs/superpowers/specs/2026-11-15-cold-email-draft-v2-design.md`;
+implemented on branch `feat/cold-email-draft-v2`, pending one paid comparison draft.
+
+
+## V2 handoff review and mixed LinkedIn input — November 15, 2026
+
+Reviewed Claude's completed v2 branch and retained its writing/format decisions.
+The shared input now supports personal LinkedIn profiles (direct email-only lookup),
+public post URLs (explicit personal-author resolution, then direct lookup), and job
+URLs including LinkedIn jobs when readable. Company remains optional for known people.
+Blocked/ambiguous/company-authored posts request the personal profile URL before any
+paid call. No profile scraping, slug guessing, commenter extraction or automated sending.
+Optional known-person drafts use v2 networking mode, not an invented vacancy.
+
+Fixed v2 integration: web-search settings invalidate completed-job/per-draft reuse;
+automatic completed Sheet rows detect prompt/profile/settings upgrades; failed claims
+remain gated for review. Actual Claude request counts are exposed in draft flags.
+The documented max_uses cap already applies across paused-turn continuations and is
+preserved unchanged. Stronger company-contact targeting remains a separate limitation.
+
+Verification: 804 passing offline tests, including nine strict dry-run variants;
+real profile freshness passed without edits, with 17 eligible Full Stack facts.
+No paid provider call or Sheet write occurred. Credentials/ADC are still absent and
+routine live remains off. Google API setup is the remaining external dependency;
+see docs/GOOGLE_SHEETS_SETUP.md and docs/reviews/2026-11-15-v2-intake-readiness.md.
+Once connected, the user adds C=input URL and D=company website (optional for people);
+one on-demand API sync fills Results and statuses. No automatic watcher is enabled.

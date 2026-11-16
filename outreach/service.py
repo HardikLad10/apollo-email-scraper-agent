@@ -58,6 +58,8 @@ def _direct_lookup(request,settings,store,apollo,budget):
     if expected: filters['domain']=expected
     elif request.company_name: filters['organization_name']=request.company_name
     key=_lookup_key(filters)
+    if request.linkedin_url:
+        store.alias_cache('enrich',_lookup_key({'linkedin_url':request.linkedin_url}),key)
     def call():
         person=apollo.lookup(**filters)
         return {person.apollo_id:asdict(person)} if person else {}
@@ -73,6 +75,8 @@ def _direct_lookup(request,settings,store,apollo,budget):
         identity=identity and person.match_confidence not in ('low','none')
         if identity:
             store.alias_cache('enrich',key,fingerprint({'apollo_id':person.apollo_id}))
+            if person.linkedin_url:
+                store.alias_cache('enrich',key,_lookup_key({'linkedin_url':_profile_url(person.linkedin_url)}))
             if not expected: expected=person.company_domain
     title=request.target_role or settings.queue_target_role
     context=Context(request.company_name or (person.company_name if person else '') or expected,
@@ -125,7 +129,7 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
     budget=budget or RunBudget(settings)
     context,people,drafts,flags = None,[],{},[]
     metadata={'created_at':datetime.now(timezone.utc).isoformat()}
-    direct=bool(request.linkedin_url or request.person_name)
+    direct=bool(request.linkedin_url or request.person_name or request.linkedin_post_url)
     start_used=dict(budget.used)
     start_failed=dict(budget.failed)
     shortlist=[]
@@ -149,6 +153,12 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
         return result
     save('processing')
     try:
+        post_evidence = None
+        if request.linkedin_post_url:
+            from .linkedin_posts import resolve_post_author
+            profile, post_evidence = resolve_post_author(request.linkedin_post_url,fetch=fetch)
+            metadata.update(source_url=request.linkedin_post_url,input_mode='linkedin_post')
+            request = replace(request,linkedin_url=profile)
         previous = store.cache_record('job_result',job_key) if job_key else None
         if job_key and previous is None:
             restore_history(request,settings,drafter.prompt if drafter else '',store,job_key)
@@ -170,7 +180,9 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
                 preflight=Context('','',request.target_role or settings.queue_target_role,None,request.job_description or '',(),())
                 load_candidate(select_profile(preflight,request.profile,automatic=request.simple_input),preflight,root=settings.project_root,refresh=True)
             context,direct_records,identity=_direct_lookup(request,settings,store,apollo,budget)
-            metadata.update(input_mode='person',identity_match=identity)
+            if post_evidence: context=replace(context,evidence=context.evidence+(post_evidence,))
+            metadata.setdefault('input_mode','person')
+            metadata['identity_match']=identity
             if not direct_records:
                 metadata['no_match_inputs']=1
                 flags.append('no_match')
@@ -181,7 +193,8 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
             if drafter is None: raise DraftError('Drafting requested without configured client')
             candidate = load_candidate(select_profile(context,request.profile,automatic=request.simple_input),context,root=settings.project_root,refresh=True)
             metadata.update(selected_profile=candidate.profile,source_hashes=candidate.source_hashes,profile_hash=candidate.profile_hash,
-                            prompt_hash=fingerprint(drafter.prompt),model=MODEL,effort=EFFORT,max_tokens=settings.max_tokens)
+                            prompt_hash=fingerprint(drafter.prompt),model=MODEL,effort=EFFORT,max_tokens=settings.max_tokens,
+                            draft_web_search_max_uses=settings.draft_web_search_max_uses)
         save('context_ready')
         if not direct:
             saved_contacts = store.saved_contacts(context.company_domain)
@@ -231,6 +244,7 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
             # Missing match cannot inherit apparently confirmed employment from search.
             person = employer_check(person_from_dict(raw),context.company_domain) if raw else replace(selected,email=None,employer_match='unknown')
             person=replace(person,linkedin_url=_profile_url(person.linkedin_url))
+            if post_evidence: person=replace(person,evidence=person.evidence+(post_evidence,))
             if not direct and person.linkedin_url:
                 store.alias_cache('enrich',key,_lookup_key({'linkedin_url':person.linkedin_url}))
             people.append(person)
@@ -239,6 +253,8 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
                 entry = store.cache_record('enrich',key)
                 if entry: contact_deadlines.append(entry['expires_at'])
             metadata.setdefault('selection_reasons',{})[person.apollo_id] = (
+                'Personal profile explicitly identified as the supplied post author; no hiring relationship inferred.' if post_evidence else
+                'User-supplied personal profile/name; no hiring relationship inferred.' if direct else
                 'Previously enriched company contact; requested title matches. Specific hiring/team relationship unconfirmed.'
                 if reused_records else 'Company/title match selected by local rules. Specific hiring/team relationship unconfirmed.')
             if person.email:
@@ -264,7 +280,7 @@ def run(request, *, settings, store, fetch, apollo, drafter=None, budget=None):
             prompt_hash = fingerprint(drafter.prompt)
             draft_key = fingerprint({'person':asdict(person),'context':asdict(context),'candidate':asdict(candidate),
                                      'request':asdict(request),'prompt':prompt_hash,'model':MODEL,'effort':EFFORT,
-                                     'max_tokens':settings.max_tokens})
+                                     'max_tokens':settings.max_tokens,'draft_web_search_max_uses':settings.draft_web_search_max_uses})
             if store.cached('draft',draft_key) is None:
                 if attempted_draft >= settings.draft_run_limit: raise BudgetExceeded('Draft run limit exhausted')
                 attempted_draft += 1
@@ -288,6 +304,8 @@ def preview(request, *, settings):
     missing = []
     if request.job_url and not (request.company_url and request.target_role):
         missing.append('Job URL needs fetch to resolve employer/title; provide company/role overrides for offline validation')
+    if request.linkedin_post_url:
+        missing.append('LinkedIn post needs public author resolution; a personal profile URL avoids that fetch')
     if request.draft_email:
         try:
             context = Context('','',request.target_role or '',request.job_url,request.job_description or '',(),())
@@ -301,4 +319,4 @@ def preview(request, *, settings):
             'draft_email':request.draft_email,'allocation_confirmed':settings.allocation_confirmed,
             'missing_context':missing,
             'warnings':[] if settings.allocation_confirmed else ['Live processing is disabled until shared allocation is confirmed'],
-            'stages':(['enrich'] if request.linkedin_url or request.person_name else ['resolve_context','search','enrich'])+(['draft'] if request.draft_email else [])}
+            'stages':(['resolve_post_author','enrich'] if request.linkedin_post_url else ['enrich'] if request.linkedin_url or request.person_name else ['resolve_context','search','enrich'])+(['draft'] if request.draft_email else [])}

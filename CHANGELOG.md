@@ -628,6 +628,20 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
   checked without printing them, zero key matches, zero private runtime files, zero
   active workflow files. Real .env, profile, SQLite/exports and venv stay ignored.
 
+## 2026-11-15 (America/Chicago) — Cold-email draft v2 design (Cursor agent)
+
+- Added `docs/superpowers/specs/2026-11-15-cold-email-draft-v2-design.md` after a
+  brainstorming session with Hardik. Decisions: verbatim first bullet (Hardik's confirmed
+  graduation/authorization/availability sentence, kept only in gitignored `profile.md`), job URL in
+  every body, all eligible profile facts sent with the full JD, 1–2 fit lines grounded in
+  the JD plus Claude web search (max 2 searches), networking draft when no job URL,
+  100–140 word target with local checks.
+- Evidence: live Klaviyo draft was 176 words with no link; Claude received the full JD but
+  only six locally selected facts. Research sources are listed in the spec.
+- Design only: no code, prompt, profile or settings changed; no API calls; not committed
+  because Codex is concurrently committing/pushing. Implement after Codex's push, on a
+  separate branch.
+
 
 ## 2026-11-15 — Private GitHub push verified
 
@@ -641,3 +655,73 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
 - Parallel Cursor draft-v2 design and its pending log entry were left untouched and
   excluded from this tested implementation push. This receipt is staged separately
   so the other agent's uncommitted work is preserved.
+
+
+## 2026-11-15 — Repository made public at user request
+
+- Changed HardikLad10/apollo-email-scraper-agent from private to public using the
+  GitHub API, as explicitly requested. GitHub returned private:false/public visibility.
+- Verified the repository page returns HTTP 200 through an unauthenticated request.
+  Earlier private-visibility notes describe the initial publication and are historical.
+- No code, secrets, contact exports, workflow configuration or paid-provider call changed.
+
+## 2026-11-15 20:43 (America/Chicago) — Anthropic web search availability check (Cursor agent)
+
+- At Hardik's explicit request, made one live Anthropic Messages call (`claude-haiku-4-5`,
+  `web_search_20250305`, `max_uses: 1`, about $0.01). Result: `end_turn`, 1 search used —
+  web search is enabled for the organization. No key or output saved; no outreach data touched.
+
+## 2026-11-15 (America/Chicago) — Cold-email draft v2 implemented (Cursor agent)
+
+- Branch `feat/cold-email-draft-v2` (this repo's own Git; parent repo untouched). Plan:
+  `docs/superpowers/plans/2026-11-15-cold-email-draft-v2.md`.
+- `outreach/profile.py`: Claude now receives every eligible shared and selected-profile
+  fact (17 for the real fullstack profile, previously the top 6 by keyword overlap) and
+  picks the JD-relevant ones itself.
+- `outreach/drafting.py`: case data adds `job_url`, `email_mode` (job/networking),
+  `required_first_bullet` (from the `work_authorization` fact) and mode-specific format/ask;
+  web search server tool (`web_search_20250305`) with `max_uses` from the new setting
+  `draft_web_search_max_uses` (default 2, 0–5, 0 disables); one `pause_turn` continuation;
+  text blocks joined without separators and leading narration dropped; flags
+  `web_searches:<n>`, `source:<url>` and `over_length` (>150 words). Hard failures: job URL
+  missing from the body, first bullet not the authorization sentence, bullet count not 3
+  (job) / 2 (networking). HTTP 400 with search enabled names the setting to disable it.
+- New `claude_cold_email_prompt_v2.md` (v1 kept): 100–140 word job format, link in the
+  opening line, 3 bullets, 1–2 grounded fit lines, one ask; 70–110 word networking format;
+  fictional examples only. `outreach/main.py` loads v2; prompt hash change means existing
+  cached drafts are not reused.
+- Local `profile.md` (gitignored): added the `work_authorization` fact and a matching claim
+  restriction; removed work authorization/start date from the do-not-infer list.
+- Verification: 789 tests passed offline (24 new); offline real-profile message build and a
+  real-SDK mocked `pause_turn` round trip passed. No live provider calls, sends, Sheet writes
+  or pushes. `allocation_confirmed` remains false.
+
+
+## 2026-11-15 — Review Claude v2 and prepare mixed URL final acceptance
+
+- Read Claude's completed v2 handoff and verified its committed branch; baseline 789
+  tests passed. Retained v2 wording, all-profile-fact input, job link and networking mode.
+- Added outreach/linkedin_posts.py and Request.linkedin_post_url; routed posts through
+  explicit public author metadata to direct Apollo lookup. Extended intake/context,
+  service, Sheet parser and CLI preview/help; LinkedIn job URLs remain job inputs.
+  Missing/private/ambiguous authors request a personal profile without paid work.
+- Personal profile/post rows are email-only by default; optional company constraints
+  share normalized profile enrichment cache entries, preserving original expiry.
+  Post evidence and accurate direct-person selection reasoning are included in outputs.
+- Fixed job/draft/history cache identity for draft_web_search_max_uses. Automatic Sheet
+  claims now version drafting dependencies, while failed claims cannot retry just
+  because the prompt changes. No raw keys/personal authorization text added to sources.
+- Added api_requests counts to draft flags. Verified official Anthropic documentation:
+  max_uses already counts searches across the paused tool turn. Preserved the same tool
+  definition on continuation; the initial reset-cap hypothesis was corrected, not shipped.
+- Missing Google credentials now explain GOOGLE_APPLICATION_CREDENTIALS/ADC setup.
+  Added exact setup guide and readiness review; updated normal input guide/README,
+  current public-origin agent guidance and scope. Routine updates remain API-only.
+- Full suite: 804 passed (4.25s), 15 more than Claude's baseline, with failing-first
+  coverage for the gaps and nine strict no-network/no-write dry-run variants.
+  Real Full Stack profile freshness passed; 17 eligible facts and required first bullet
+  present. Tests did not modify the private profile or original TeX files.
+- Zero live provider calls, Google writes, messages or new schedules during review.
+  No pending attempts/row claims; persistent allocation_confirmed remains false.
+  Google credentials are still missing, so final Sheet-to-Sheet live acceptance is
+  pending the one-time connection and user-supplied new test URLs.

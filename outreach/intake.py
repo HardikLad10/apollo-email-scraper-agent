@@ -40,9 +40,13 @@ def decode_input(entry,company='',*,target_role='Software Engineer'):
         host=domain(url)
         if host=='linkedin.com' or host.endswith('.linkedin.com'):
             normalized=normalize_linkedin_url(url)
-            if not re.fullmatch(r'https://linkedin\.com/in/[^/\s]+',normalized):
-                raise InputError('Use a personal LinkedIn /in/ URL')
-            data={'linkedin_url':normalized,'job_url':None}
+            if re.fullmatch(r'https://linkedin\.com/in/[^/\s]+',normalized):
+                data={'linkedin_url':normalized,'job_url':None}
+            elif re.match(r'^/jobs/view/[^/]+',urlsplit(url).path):
+                data={'job_url':url}
+            else:
+                from .linkedin_posts import post_url
+                data={'linkedin_post_url':post_url(url),'job_url':None}
         elif urlsplit(url).path in ('','/') and not urlsplit(url).query:
             data={'company_url':url,'target_role':target_role,'job_url':None}
         else: data={'job_url':url}

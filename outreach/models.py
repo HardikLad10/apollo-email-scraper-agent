@@ -32,6 +32,7 @@ class Request:
     person_name: str | None = None
     company_name: str | None = None
     simple_input: bool = False
+    linkedin_post_url: str | None = None
 
 
 @dataclass(frozen=True)

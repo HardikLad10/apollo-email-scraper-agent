@@ -4,7 +4,12 @@
 
 Normal input is now one URL or `Full Name | Company`. In the existing Queue fill only
 column C; IDs/readiness/defaults are handled by code. See the first section of the pilot
-guide. Known people use direct enrichment; job URLs use contact discovery plus drafts.
+guide. Known people use direct enrichment; job URLs use contact discovery plus v2 drafts.
+Public LinkedIn posts can resolve an explicit personal author, with no-spend fallback
+to a profile-URL request when blocked or ambiguous.
+
+The remaining Google API setup and final-test inputs are documented in
+[docs/GOOGLE_SHEETS_SETUP.md](docs/GOOGLE_SHEETS_SETUP.md).
 
 
 The new `outreach` command accepts a job URL, or company website plus target role,

@@ -85,12 +85,13 @@ class DraftClient:
         messages = [{'role':'user','content':build_message(context,person,candidate,request)}]
         responses = [self._create(messages)]
         if responses[0].stop_reason == 'pause_turn':
+            # max_uses covers the entire server-tool turn, including this continuation.
             responses.append(self._create(messages+[{'role':'assistant','content':responses[0].content}]))
         if responses[-1].stop_reason != 'end_turn': raise DraftError('Claude output incomplete; no automatic retry')
         blocks = [block for result in responses for block in result.content if block.type=='text']
         # Cited passages arrive as separate text blocks inside one sentence.
         draft = parse_draft(''.join(block.text for block in blocks),3 if context.job_url else 2)
-        flags = list(check_draft(draft,context,candidate))
+        flags = list(check_draft(draft,context,candidate))+[f'api_requests:{len(responses)}']
         if request.application_status != 'applied' and re.search(r"(?i)\b(?:applied|submitted my application)\b",draft.body):
             flags.append('unconfirmed_application_wording')
         if not request.resume_attached and re.search(r'(?i)\battach(?:ed|ment)?\b',draft.body):

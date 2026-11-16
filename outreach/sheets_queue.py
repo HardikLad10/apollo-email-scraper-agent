@@ -51,7 +51,7 @@ def row_request(row, settings):
         if str(count).strip() not in (str(converted),str(float(converted))): raise ValueError()
     except (ValueError,TypeError): raise InputError('max_contacts must be an integer') from None
     if converted>settings.max_contacts: raise InputError('max_contacts exceeds configured cap')
-    direct=bool(data.get('linkedin_url') or data.get('person_name'))
+    direct=bool(data.get('linkedin_url') or data.get('person_name') or data.get('linkedin_post_url'))
     request=Request(job_url=data.get('job_url',text('job_url') or None),company_url=data.get('company_url',text('company_url') or None) if not data.get('company_name') else None,
                     target_role=text('target_role') or data.get('target_role'),job_description=text('job_description') or None,
                     profile=text('profile') or 'auto',max_contacts=converted,
@@ -59,7 +59,8 @@ def row_request(row, settings):
                     application_status=text('application_status') or 'unknown',
                     resume_attached=boolean(row.get('resume_attached')),draft_email=boolean(row.get('draft_email'),default=settings.queue_default_draft_email and not direct),
                     notes=text('notes'),linkedin_url=data.get('linkedin_url'),person_name=data.get('person_name'),
-                    company_name=data.get('company_name'),simple_input=automatic or direct)
+                    company_name=data.get('company_name'),simple_input=automatic or direct,
+                    linkedin_post_url=data.get('linkedin_post_url'))
     validate_request(request)
     return request
 
@@ -114,6 +115,13 @@ class QueueProcessor:
                 summary['errors']+=1; continue
             token=str(row.get('requeue_token') or '')
             if request.simple_input and not token: token='auto:'+hashed
+            input_token=token
+            if request.simple_input and not row.get('requeue_token') and request.draft_email:
+                from .reuse import draft_dependencies
+                try: prompt=(self.settings.project_root/'claude_cold_email_prompt_v2.md').read_text()
+                except OSError: prompt=''
+                signature=draft_dependencies(self.settings,prompt)
+                if signature is not None: token+=':draft:'+fingerprint(signature)
             base='sheet:'+self.sheet_id+':'+row_id
             previous=self.store.get_claim(base)
             if previous:
@@ -121,9 +129,10 @@ class QueueProcessor:
                     self._status(row_id,hashed,{'status':'error','error':'Interrupted or active local row claim requires reconciliation'})
                     summary['errors']+=1; continue
                 saved=previous[1]
-                if previous[0] in ('released','error'):
-                    if not token or token==saved.get('token',''):
+                if previous[0] in ('released','error') or saved.get('outcome',{}).get('status')=='error':
+                    if not input_token or input_token==saved.get('input_token',saved.get('token','')):
                         self._status(row_id,hashed,{'status':'changed','error':'Set a new requeue_token after reviewing the failed/released claim'})
+                        if saved.get('outcome',{}).get('status')=='error': summary['errors']+=1
                         summary['changed']+=1; continue
                 elif saved['input_hash']==hashed and saved['token']==token:
                     self._publish(row_id,hashed,saved)
@@ -134,7 +143,7 @@ class QueueProcessor:
                     self._status(row_id,hashed,{'status':'changed','error':'Review edit, then change requeue_token to explicitly reprocess'})
                     summary['changed']+=1; continue
             operation=base+':'+fingerprint({'input':hashed,'token':token})
-            payload={'input_hash':hashed,'token':token,'base_claim':base,'created_at':datetime.now(timezone.utc).isoformat()}
+            payload={'input_hash':hashed,'token':token,'input_token':input_token,'base_claim':base,'created_at':datetime.now(timezone.utc).isoformat()}
             # Do not acquire durable claims if even the pre-processing status write fails.
             if not self._status(row_id,hashed,{'status':'processing','error':'',**({'row_id':row_id} if row.get('_generated_id') else {})}):
                 summary['errors']+=1; continue
@@ -155,7 +164,7 @@ class QueueProcessor:
                 self.store.finish_claim(base,failure,status='error')
                 self._status(row_id,hashed,{'status':'needs_context' if isinstance(error,InputError) else 'error','error':message})
                 summary['errors']+=1; continue
-            payload={'input_hash':hashed,'token':token,'outcome':asdict(outcome),
+            payload={'input_hash':hashed,'token':token,'input_token':input_token,'outcome':asdict(outcome),
                      'processed_at':datetime.now(timezone.utc).isoformat()}
             # Both claims are saved before any Results append. An ambiguous write can
             # be reconciled by result_id on the next sync without provider calls.
@@ -172,7 +181,10 @@ class GoogleQueue:
     def __init__(self,sheet_id,*,service=None):
         if service is None:
             from shared.sheets import _service
-            service=_service()
+            from google.auth.exceptions import DefaultCredentialsError
+            try: service=_service()
+            except DefaultCredentialsError:
+                raise QueueError('Google Sheets API credentials are missing. Set GOOGLE_APPLICATION_CREDENTIALS to the local service-account JSON and share the Sheet with its client_email, or configure Application Default Credentials. See docs/GOOGLE_SHEETS_SETUP.md.') from None
         self.service,self.sheet_id=service,sheet_id
 
     def _read(self,tab):

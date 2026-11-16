@@ -1,8 +1,9 @@
 # URL outreach pilot
 
-Status: implemented with mocked/offline verification, November 14, 2026 (Chicago).
-Real account permissions, email coverage/deliverability, draft quality and Sheet API
-connectivity have not been live-tested. The workbook format was set up in the browser. No automated sender or polling is included.
+Status: v2 drafting and mixed URL intake are offline-verified, November 15, 2026
+(Chicago). A bounded v1 Apollo/Claude run passed. The v2 live comparison and Google
+Sheet API write-back still await final acceptance and Google credentials. No sender
+or background polling is included. See GOOGLE_SHEETS_SETUP.md for the remaining setup.
 
 
 ## Normal input — one cell
@@ -11,6 +12,9 @@ In the existing Queue, fill only column C (`job_url`). The simple API layout cal
 this column `input`. Accepted examples:
 
 - A personal LinkedIn URL: fetch that person's professional email.
+- A LinkedIn post URL: resolve one explicit public personal author and look up their
+  email. If inaccessible/ambiguous, request the personal profile URL before any spend.
+- A LinkedIn /jobs/view/ URL: use the normal job workflow with the company website.
 - `Jordan Blake | Northstar`: fetch the named person's email; company can instead go
   in column D (`company_url` / `company`) as a name or website.
 - A job URL: discover one relevant contact and prepare a job-specific email draft.
@@ -321,3 +325,27 @@ New rows are processed by --sync-sheet; this does not itself install a scheduler
 The local ledger is the durable authority for reuse, quotas and reconciliation.
 A different machine/ephemeral runner needs a state-persistence design before reuse can
 be assumed; Notion input and runner deployment are deferred to phase 2.
+
+
+## V2 review and final acceptance
+
+The active v2 prompt/profile/model/web-search settings are included in completed-job
+and draft cache identities. Automatic Sheet rows also version successful work when
+these dependencies change, so an older processed row cannot silently serve a v1 draft.
+Failed/interrupted claims still require explicit recovery; a prompt edit is not retry
+permission. Known-person enrichment caches are shared with/without the optional company
+column; employer mismatches remain flagged and cannot receive automatic drafts.
+
+The provider's max_uses cap applies across the whole paused tool turn; it is preserved
+unchanged on the one allowed continuation. Draft flags now include api_requests:1 or
+api_requests:2, plus any reported web searches and source URLs. Draft quota units count
+logical drafts, not HTTP requests or an estimate of billable credits.
+
+LinkedIn posts use only explicit public authorship metadata (JSON-LD posting author,
+rel=author, article:author). Slugs, commenters and unrelated profile links are not used.
+A post is not a verified vacancy. Post/personal-profile rows remain email-only unless
+an optional draft_email override requests a v2 networking draft.
+
+For final test inputs and Google API setup, read [GOOGLE_SHEETS_SETUP.md](GOOGLE_SHEETS_SETUP.md).
+All remaining output/status fields are written by --sync-sheet through the API. Appending
+rows alone does not start a worker; scheduling/hosting is a separate phase.

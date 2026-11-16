@@ -12,7 +12,7 @@ not proof that a feature exists. Verify claims against the implementation.
 - Preserve unrelated files in the surrounding `job-search` project.
 - This folder has an independent `.git` with original upstream ancestry restored.
   `upstream` is the friend's job-hunt-tools repository; `origin` is HardikLad10/
-  apollo-email-scraper-agent (private). Check Git root/remotes before every mutation.
+  apollo-email-scraper-agent (public). Check Git root/remotes before every mutation.
   Never stage, commit, push or change remotes in the surrounding parent repository.
 - Never run provider lookups, draft generation, job scans, Sheets writes, or Actions
   merely to test setup. Use fixtures/mocks unless the user has authorized the live action.
