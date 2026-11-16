@@ -92,11 +92,6 @@ def load_candidate(profile, context, *, root, refresh=False):
     restrictions = tuple(_facts(text,'Claim restrictions for every profile'))
     # Explanatory cross-references must not be mistaken for independent candidate claims.
     selected = [f for f in selected if not f.startswith('**teaching:**') or profile=='fullstack']
-    terms = set(re.findall(r'[a-z0-9+#]+',context.job_title.lower()+' '+context.description.lower()))
-    relevant = sorted(shared+selected, key=lambda f:-len(terms & set(re.findall(r'[a-z0-9+#]+',f.lower()))))
-    facts = relevant[:6]
-    # Preserve at least one actual selected-profile implementation when relevant facts tie.
-    chosen_big = next((f for f in selected if '**big.' in f and '**big.role:**' not in f),None)
-    if chosen_big and chosen_big not in facts: facts[-1] = chosen_big
+    facts = shared+selected
     if len(facts)<3: raise ProfileNeedsReview('At least three supported facts required')
     return Candidate(profile,tuple(facts),restrictions,hashes,hashlib.sha256(text.encode()).hexdigest())

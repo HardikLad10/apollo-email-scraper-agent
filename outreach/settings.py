@@ -25,6 +25,7 @@ class Settings:
     timeout_seconds: float = 15
     draft_timeout_seconds: float = 60
     max_tokens: int = 8192
+    draft_web_search_max_uses: int = 2
     queue_contacts_per_job: int = 1
     queue_default_draft_email: bool = True
     queue_target_role: str = 'Software Engineer'
@@ -44,6 +45,8 @@ def load_settings(path: Path | None = None) -> Settings:
                 raise ValueError(f'Invalid {key}')
         elif key in ('allocation_confirmed','queue_default_draft_email'):
             if type(value) is not bool: raise ValueError('allocation_confirmed must be boolean')
+        elif key == 'draft_web_search_max_uses':
+            if type(value) is not int or not 0 <= value <= 5: raise ValueError('draft_web_search_max_uses must be 0-5')
         elif type(value) not in ((int, float) if key in ('timeout_seconds','draft_timeout_seconds') else (int,)) or value <= 0:
             raise ValueError(f'Invalid positive limit: {key}')
     for field, default in [('state_path', 'local-data/state.sqlite3'), ('output_dir', 'local-data/exports')]:

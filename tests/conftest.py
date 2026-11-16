@@ -53,7 +53,8 @@ def outreach_project(tmp_path_factory):
         'state_path':str(root/'local-data/state.sqlite3'), 'output_dir':str(root/'local-data/exports'),
         'allocation_confirmed':False,
     }))
-    (root/'claude_cold_email_prompt_v1.md').write_text((REAL_ROOT/'claude_cold_email_prompt_v1.md').read_text())
+    for prompt in ('claude_cold_email_prompt_v1.md','claude_cold_email_prompt_v2.md'):
+        (root/prompt).write_text((REAL_ROOT/prompt).read_text())
     return root
 
 

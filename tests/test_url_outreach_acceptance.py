@@ -23,7 +23,7 @@ def test_real_sdk_accepts_opus_effort_without_network(monkeypatch,outreach_proje
         sdk=Anthropic(api_key='fake-not-a-secret',max_retries=0,http_client=http)
         prompt=(outreach_project/'claude_cold_email_prompt_v1.md').read_text()
         client=DraftClient('fake',prompt,8192,client=sdk)
-        context=Context('Example','example.org','Full Stack Engineer',None,'React',(),())
+        context=Context('Example','example.org','Full Stack Engineer','https://example.org/jobs/1','React',(),())
         candidate=Candidate('fullstack',('React','APIs','SQL'),(),{},'hash')
         assert client.draft(context,Person('p','Alex','Recruiter','example.org'),candidate,Request()).subject
     assert len(calls)==1

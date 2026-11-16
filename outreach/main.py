@@ -137,7 +137,7 @@ def main(argv=None):
                 drafter=None
                 if request.draft_email:
                     if not os.environ.get('ANTHROPIC_API_KEY'): raise InputError('ANTHROPIC_API_KEY is required for drafting')
-                    drafter=DraftClient(os.environ['ANTHROPIC_API_KEY'],(ROOT/'claude_cold_email_prompt_v1.md').read_text(),settings.max_tokens,timeout=settings.draft_timeout_seconds)
+                    drafter=DraftClient(os.environ['ANTHROPIC_API_KEY'],(ROOT/'claude_cold_email_prompt_v2.md').read_text(),settings.max_tokens,timeout=settings.draft_timeout_seconds,web_search_max_uses=settings.draft_web_search_max_uses)
                 return run(request,settings=settings,store=store,fetch=fetch_public_text,apollo=apollo,drafter=drafter,budget=budget)
             if args.sync_sheet:
                 from .sheets_queue import GoogleQueue, QueueProcessor
