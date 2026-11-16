@@ -56,7 +56,7 @@ def row_request(row, settings):
                     target_role=text('target_role') or data.get('target_role'),job_description=text('job_description') or None,
                     profile=text('profile') or 'auto',max_contacts=converted,
                     contact_roles=tuple(part.strip() for part in text('contact_roles').replace(';',',').split(',')) if text('contact_roles') else Request().contact_roles,
-                    application_status=text('application_status') or 'unknown',
+                    application_status=text('application_status') or settings.default_application_status,
                     resume_attached=boolean(row.get('resume_attached')),draft_email=boolean(row.get('draft_email'),default=settings.queue_default_draft_email and not direct),
                     notes=text('notes'),linkedin_url=data.get('linkedin_url'),person_name=data.get('person_name'),
                     company_name=data.get('company_name'),simple_input=automatic or direct,

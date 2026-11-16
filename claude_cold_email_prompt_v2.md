@@ -50,8 +50,10 @@ searching; the response must still be only the finished email.
 1. `Subject: <Role> at <Company>`, with no promotional wording.
 2. "Hi <first name>," when a name is known; otherwise "Hi,".
 3. One opening line naming the role and company, ending with the exact `job_url` as a
-   plain URL (no markdown link, no brackets). Then a short lead-in such as "A few reasons
-   I'd be a strong fit:".
+   plain URL (no markdown link, no brackets). When `application_status` is `applied`,
+   open with "I've applied for the <Role> role at <Company>:"; otherwise "I'm interested
+   in the <Role> role at <Company>:". Then a short lead-in such as "A few reasons I'd be
+   a strong fit:".
 4. Exactly three hyphen bullets:
    - Bullet 1 is `required_first_bullet`, copied character for character. Do not reword,
      shorten, or add to it. If it is null, use the most relevant education fact instead.
@@ -60,7 +62,9 @@ searching; the response must still be only the finished email.
 5. One or two sentences on why Hardik fits: connect one specific requirement from the job
    description, or one company value or success factor from search, to a specific piece
    of his experience. No generic praise and no repetition of the bullets.
-6. The ask: "Would you be open to a brief conversation about the role?"
+6. The ask: the case's `ask` sentence, copied exactly. It is chosen for the recipient
+   (`ask_kind`: recruiter, manager, engineer, executive, or routing for people outside
+   the hiring path). Do not swap in a different request or add a second one.
 7. "Thanks," then "Hardik Lad".
 
 Keep the body between 100 and 140 words, including greeting and sign-off.
@@ -71,7 +75,7 @@ Used when no job URL was supplied. Same greeting and sign-off. One opening line 
 software engineering roles at the company, with no link and no claim that a specific
 opening exists. Exactly two hyphen bullets: `required_first_bullet` verbatim, then the
 single most relevant fact. One fit sentence from search or the supplied company and role.
-Ask: "Would you be open to a brief conversation about roles on your team?" Keep the body
+Ask: the case's `ask` sentence, copied exactly. Keep the body
 between 70 and 110 words.
 
 ## Voice and wording
@@ -99,7 +103,7 @@ Subject: Backend Engineer at Example Freight
 
 Hi Jordan,
 
-I'm interested in the Backend Engineer role at Example Freight: https://example.com/careers/backend-engineer
+I've applied for the Backend Engineer role at Example Freight: https://example.com/careers/backend-engineer
 A few reasons I'd be a strong fit:
 
 - Graduated in May with an MS in Computer Science; authorized to work in the U.S. and available to start immediately.
@@ -108,7 +112,7 @@ A few reasons I'd be a strong fit:
 
 Your posting asks for engineers who own services end to end, and Example Freight lists shipping small and learning fast as a core value. That's how I ran the reconciliation rebuild: weekly releases, testing each change with finance, until their manual checks went away.
 
-Would you be open to a brief conversation about the role?
+Would you be open to a brief chat about the role and your team?
 
 Thanks,
 Hardik Lad
@@ -125,7 +129,7 @@ I'm reaching out about software engineering roles on your team at Example Health
 
 Example Health's focus on simpler clinic scheduling for patients appeals to me, and removing manual steps for non-technical users is the work I've enjoyed most.
 
-Would you be open to a brief conversation about roles on your team?
+Would you be open to a brief chat about engineering roles on your team?
 
 Thanks,
 Hardik Lad
@@ -136,8 +140,8 @@ Hardik Lad
 
 Before responding, confirm: the first bullet matches `required_first_bullet` exactly; the
 exact `job_url` appears in job mode; the bullet count is right for the mode; every claim
-comes from the supplied facts, the job description, or a search result; the length
-target is met; no banned wording or placeholders remain.
+comes from the supplied facts, the job description, or a search result; the ask is the case's
+`ask` sentence; the length target is met; no banned wording or placeholders remain.
 
 Return only the finished email, beginning with "Subject:". No analysis, explanation,
 alternatives, or code fences. Use the NEEDS_CONTEXT response instead when essential

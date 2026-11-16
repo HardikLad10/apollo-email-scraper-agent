@@ -71,7 +71,7 @@ def test_networking_message_fields():
     data = message_data(NETWORK, Candidate('fullstack',('a','b','c'),(),{},'hash'))
     assert data['job_url'] is None and data['email_mode'] == 'networking'
     assert data['required_first_bullet'] is None and data['format'] == 'two_hyphen_bullets'
-    assert 'roles on your team' in data['ask']
+    assert data['ask_kind'] == 'recruiter' and 'open engineering roles' in data['ask']
 
 
 def test_web_search_tool_uses_setting():
@@ -188,3 +188,50 @@ def test_real_profile_has_single_sentence_authorization_fact():
     from outreach.profile import _facts
     facts = [f for f in _facts(path.read_text(),'Shared candidate facts') if f.startswith('**work_authorization:**')]
     assert len(facts) == 1 and not re.search(r'\.\s+[A-Z]', facts[0]) and facts[0].endswith('.')
+
+
+@pytest.mark.parametrize('title,kind', [
+    ('Senior Technical Recruiter','recruiter'), ('Talent Acquisition Partner','recruiter'),
+    ('Engineering Manager','manager'), ('Director of Engineering','manager'), ('Head of Platform','manager'),
+    ('Software Engineer II','engineer'), ('Staff Developer','engineer'),
+    ('CTO','executive'), ('Co-Founder & CEO','executive'), ('VP of Engineering','executive'),
+    ('Account Executive','routing'), ('Sales Director','routing'), ('Hiring Manager','manager'), ('Marketing Lead','routing'), ('','routing')])
+def test_ask_kind_from_title(title, kind):
+    from outreach.drafting import ask_kind
+    assert ask_kind(title) == kind
+
+
+def test_ask_depends_on_recipient_status_and_mode():
+    recruiter = Person('p','Alex','Technical Recruiter','example.org')
+    applied = json.loads(build_message(JOB, recruiter, CANDIDATE, Request(application_status='applied')).split('\n',1)[1])
+    assert applied['ask_kind'] == 'recruiter' and 'my application' in applied['ask']
+    unknown = json.loads(build_message(JOB, recruiter, CANDIDATE, Request()).split('\n',1)[1])
+    assert 'my application' not in unknown['ask']
+    engineer = json.loads(build_message(JOB, Person('p','Sam','Software Engineer','example.org'), CANDIDATE, Request()).split('\n',1)[1])
+    assert 'referring me' in engineer['ask']
+    other = json.loads(build_message(NETWORK, Person('p','Kim','Sales Director','example.org'), CANDIDATE, Request()).split('\n',1)[1])
+    assert other['ask_kind'] == 'routing' and 'right person' in other['ask']
+
+
+def test_draft_flags_ask_kind_and_modified_ask():
+    from outreach.drafting import ASKS
+    exact = GOOD.replace('Would you be open to a brief conversation about the role?', ASKS[('manager','job')])
+    drafter, _ = client(response(text(exact)))
+    flags = drafter.draft(JOB, Person('p','Alex','Engineering Manager','example.org'), CANDIDATE, Request()).review_flags
+    assert 'ask:manager' in flags and 'ask_modified' not in flags
+    drafter, _ = client(response(text(GOOD)))
+    flags = drafter.draft(JOB, Person('p','Alex','Engineering Manager','example.org'), CANDIDATE, Request()).review_flags
+    assert 'ask_modified' in flags
+
+
+def test_application_status_default_comes_from_settings(tmp_path):
+    from outreach.main import parse_request
+    assert parse_request(['--job-url', URL]).application_status == 'applied'
+    assert parse_request(['--job-url', URL, '--application-status', 'interested']).application_status == 'interested'
+    from outreach.sheets_queue import row_request
+    from outreach.settings import load_settings
+    path = tmp_path/'settings.yaml'
+    path.write_text(yaml.safe_dump({'default_application_status':'unknown'}))
+    assert row_request({'job_url':URL}, load_settings(path)).application_status == 'unknown'
+    path.write_text(yaml.safe_dump({'default_application_status':'maybe'}))
+    with pytest.raises(ValueError): load_settings(path)

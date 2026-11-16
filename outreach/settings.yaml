@@ -15,6 +15,7 @@ timeout_seconds: 15
 draft_timeout_seconds: 60
 max_tokens: 8192
 draft_web_search_max_uses: 2
+default_application_status: applied
 queue_contacts_per_job: 1
 queue_default_draft_email: true
 queue_target_role: Software Engineer

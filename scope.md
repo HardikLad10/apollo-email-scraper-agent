@@ -489,3 +489,11 @@ published examples/log references are being sanitized in files and branch histor
 the relevant private identifier is redacted even in historical append-only notes.
 Use installed .githooks/pre-commit or scripts/check_private_config.py to check staged
 files. A local chat-context handoff will record the verified final state and blockers.
+
+## Applied default and recipient-specific ask — November 16, 2026
+
+Hardik applies before emailing, so drafts assume `applied` unless a job says otherwise
+(setting `default_application_status`). The ask is chosen from the recipient's title:
+recruiters are asked to look at the application, engineering managers for a brief chat,
+engineers for a referral or quick chat, executives for a chat or a pointer, and anyone
+outside the hiring path only for a pointer to the right person.

@@ -827,3 +827,20 @@ No runtime code was changed in this status-check turn; Claude Code is reviewing 
   private values and non-placeholder Sheet links without printing their values.
 - Final privacy verification/visibility restoration and local chat-context handoff
   are tracked in local-data/live-batch-checklist.md. No schedules or sends enabled.
+
+## 2026-11-16 (America/Chicago) — Applied-by-default and recipient-specific ask (Cursor agent)
+
+- Hardik chose: treat every job as already applied by default, and pick the email's ask
+  from the recipient's title.
+- New setting `default_application_status` (default `applied`; `unknown`/`interested`
+  allowed). Used when `--application-status` or the Queue `application_status` cell is
+  blank; explicit values still win. Prompt v2 opens with "I've applied for the <Role> role
+  at <Company>: <link>" when applied, "I'm interested in…" otherwise.
+- `drafting.ask_kind(title)`: recruiter, manager (engineering-side manager/director/head/
+  lead or "hiring manager"), engineer, executive (CEO/CTO/founder/VP/chief), otherwise
+  routing. Each kind has one fixed ask per job/networking mode (recruiters get "take a look
+  at my application" only when applied; engineers get referral-or-chat; routing asks for
+  the right person). Case data sends `ask_kind` and `ask`; drafts get `ask:<kind>` and, if
+  Claude did not use the ask verbatim, `ask_modified` (flag only).
+- Updated `test_drafts_and_application_claims_are_explicit` to the new applied default.
+  833 tests passed offline. No provider calls.

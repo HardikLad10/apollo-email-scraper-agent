@@ -21,7 +21,7 @@ def _parser():
     parser.add_argument('--profile',choices=['auto','fullstack','amazon','accessibility'],default='auto')
     parser.add_argument('--contact-roles',default='hiring_manager,technical_recruiter,engineering_manager')
     parser.add_argument('--max-contacts',type=int,default=None)
-    parser.add_argument('--application-status',choices=['unknown','interested','applied'],default='unknown')
+    parser.add_argument('--application-status',choices=['unknown','interested','applied'],default=None)
     parser.add_argument('--notes',default='')
     for name in ('resume-attached','dry-run','sync-sheet','preview-sheet','setup-sheet','list-pending','confirm'):
         parser.add_argument('--'+name,action='store_true')
@@ -52,7 +52,7 @@ def _request(args,settings=None):
                             'notes':args.notes},settings or load_settings())
     if args.company: raise InputError('--company needs a URL/person positional input')
     request=Request(args.job_url,args.company_url,args.target_role,description,args.profile,3 if args.max_contacts is None else args.max_contacts,
-                    tuple(role.strip() for role in args.contact_roles.split(',')),args.application_status,
+                    tuple(role.strip() for role in args.contact_roles.split(',')),args.application_status or (settings or load_settings()).default_application_status,
                     args.resume_attached,bool(args.draft_email),args.notes)
     validate_request(request)
     return request

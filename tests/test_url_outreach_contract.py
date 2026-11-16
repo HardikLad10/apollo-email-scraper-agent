@@ -16,7 +16,7 @@ def test_company_requires_role():
 def test_drafts_and_application_claims_are_explicit():
     request = parse_request(['--job-url', 'https://example.org/job/1'])
     assert not request.draft_email
-    assert request.application_status == 'unknown'
+    assert request.application_status == 'applied'
     assert not request.resume_attached
 
 
